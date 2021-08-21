@@ -3,7 +3,7 @@ Media Playback Engine for Cinder
 
 This is effectively a wrapper around `IMFMediaEngine` (meaning it's currently windows 8+ only) which allows for CPU side playback
 of video and audio in Cinder. According to the documentation there appears to be a fast-path
-that goes through DXGI but that has yet to be implemented. 
+that goes through DXGI but that has yet to be implemented, though development is underway on the [dxgi-render-path](https://github.com/axjxwright/AX-MediaPlayer/blob/dxgi-render-path/) branch.
 
 I've taken _reasonable_ care as it pertains to leaks but that is my first COM heavy library
 so my first priority was to get it running and make sure it's leak-free later. Please report any
