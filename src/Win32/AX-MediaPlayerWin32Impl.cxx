@@ -207,7 +207,8 @@ namespace AX::Video
         APTTYPE apartmentType = {};
         APTTYPEQUALIFIER qualifier = {};
 
-        assert ( SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) ) );
+        bool inited = SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) );
+        assert ( inited );
 
         if ( apartmentType == APTTYPE_MTA )
         {
