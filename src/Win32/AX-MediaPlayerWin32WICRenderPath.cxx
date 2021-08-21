@@ -15,14 +15,12 @@ namespace AX::Video
     WICRenderPath::WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
         : RenderPath ( owner, source, flags )
     {
-        if ( SUCCEEDED ( CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &_wicFactory ) ) ) )
-        {
-            // @todo(andrew): work out how best to flag an error like this
-        }
+        CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &_wicFactory ) );
     }
         
     bool WICRenderPath::InitializeRenderTarget ( const ci::ivec2 & size )
     {
+        if ( !_wicFactory ) return false;
         if ( !_wicBitmap || size != _size )
         {
             _size = size;

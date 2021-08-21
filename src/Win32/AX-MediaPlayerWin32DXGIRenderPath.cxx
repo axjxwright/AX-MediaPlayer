@@ -2,8 +2,8 @@
 //  AX-MediaPlayerWin32DXGIRenderPath.cxx
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 
@@ -12,73 +12,162 @@
 #include "AX-MediaPlayerWin32DXGIRenderPath.h"
 #include "glad/glad_wgl.h"
 
+#include "cinder/app/App.h"
+
 using namespace ci;
 
 namespace AX::Video
 {
-    class DXGIRenderPath::InteropContext
+    using SharedTexture                 = DXGIRenderPath::SharedTexture;
+    using SharedTextureRef              = DXGIRenderPath::SharedTextureRef;
+    using InteropContextRef             = std::unique_ptr<class InteropContext>;
+
+    // @note(andrew): Have a single D3D + interop context for all video sessions
+    class InteropContext                : public ci::Noncopyable
     {
     public:
 
-        InteropContext ( ID3D11Device& device );
-        ~InteropContext ( );
+        static InteropContext &         Get ( );
 
-        ID3D11Device &          Device ( ) const { return _device; }
-        HANDLE                  Handle ( ) const { return _interopHandle; }
+        ~InteropContext                 ( );
+
+        inline ID3D11Device *           Device ( ) const { return _device.Get(); }
+        inline HANDLE                   Handle ( ) const { return _interopHandle; }
+        inline IMFDXGIDeviceManager *   DXGIManager ( ) const { return _dxgiManager.Get ( ); }
         
-        SharedTextureRef        CreateSharedTexture ( const ivec2 & size );
-        inline bool             IsValid ( ) const { return _isValid; }
+        SharedTextureRef                CreateSharedTexture ( const ivec2 & size );
+        inline bool                     IsValid ( ) const { return _isValid; }
         
     protected:
 
-        ID3D11Device&           _device;
-        HANDLE                  _interopHandle{ nullptr };
-        bool                    _isValid{ false };
+        InteropContext                  ( );
+
+        ComPtr<ID3D11Device>            _device{ nullptr };
+        ComPtr<IMFDXGIDeviceManager>    _dxgiManager{ nullptr };
+        UINT                            _dxgiResetToken{ 0 };
+
+        HANDLE                          _interopHandle{ nullptr };
+        bool                            _isValid{ false };
     };
+
+    InteropContext & InteropContext::Get ( )
+    {
+        static InteropContext kInstance;
+        return kInstance;
+    }
 
     class DXGIRenderPath::SharedTexture
     {
     public:
 
-        SharedTexture           ( InteropContext & context, const ivec2 & size );
-        ~SharedTexture          ( );
+        SharedTexture               ( const ivec2 & size );
+        ~SharedTexture              ( );
 
-        inline bool IsValid     ( ) const { return _isValid; }
+        bool                        Lock ( );
+        bool                        Unlock ( );
+        inline bool                 IsLocked ( ) const { return _isLocked;  }
 
-        ID3D11Texture2D *       DXTextureHandle ( ) { return _dxTexture.Get( ); }
+        inline bool IsValid         ( ) const { return _isValid; }
+        ID3D11Texture2D *           DXTextureHandle ( ) const { return _dxTexture.Get( ); }
+        const ci::gl::TextureRef &  GLTextureHandle ( ) const { return _glTexture; }
 
     protected:
 
-        InteropContext &        _context;
-        ci::gl::TextureRef      _glTexture;
-        ComPtr<ID3D11Texture2D> _dxTexture{ nullptr };
-        HANDLE                  _shareHandle{ nullptr };
-        bool                    _isValid{ false };
+        ci::gl::TextureRef          _glTexture;
+        ComPtr<ID3D11Texture2D>     _dxTexture{ nullptr };
+        HANDLE                      _shareHandle{ nullptr };
+        bool                        _isValid{ false };
+        bool                        _isLocked{ false };
     };
 
-    DXGIRenderPath::InteropContext::InteropContext ( ID3D11Device & device )
-    : _device ( device )
+    class DXGIRenderPathFrameLease : public MediaPlayer::FrameLease
     {
-        _interopHandle = wglDXOpenDeviceNV ( &device );
+    public:
+
+        DXGIRenderPathFrameLease ( const SharedTextureRef & texture )
+            : _texture ( texture.get ( ) )
+        {
+            if ( _texture ) _texture->Lock ( );
+        }
+
+        inline bool    IsValid   ( ) const override { return ToTexture ( ) != nullptr; }
+        gl::TextureRef ToTexture ( ) const override { return _texture ? _texture->GLTextureHandle ( ) : nullptr; };
+
+        ~DXGIRenderPathFrameLease ( )
+        {
+            if ( _texture && _texture->IsLocked ( ) )
+            {
+                _texture->Unlock ( );
+                _texture = nullptr;
+            }
+        }
+
+    protected:
+
+        SharedTexture * _texture{ nullptr };
+    };
+
+    InteropContext::InteropContext ( )
+        : _isValid ( false )
+    {
+        UINT deviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
+
+#ifndef _NDEBUG
+        deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
+        if ( !SUCCEEDED ( MFCreateDXGIDeviceManager ( &_dxgiResetToken, _dxgiManager.GetAddressOf ( ) ) ) ) return;
+        if ( !SUCCEEDED ( D3D11CreateDevice ( nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, nullptr, 0, D3D11_SDK_VERSION, _device.GetAddressOf ( ), nullptr, nullptr ) ) ) return;
+        
+        ComPtr<ID3D10Multithread> multiThread{ nullptr };
+        if ( SUCCEEDED ( _device->QueryInterface ( multiThread.GetAddressOf ( ) ) ) )
+        {
+            multiThread->SetMultithreadProtected ( true );
+        }
+        else
+        {
+            return;
+        }
+
+        if ( !SUCCEEDED ( _dxgiManager->ResetDevice ( _device.Get ( ), _dxgiResetToken ) ) ) return;
+        
+        _interopHandle = wglDXOpenDeviceNV ( _device.Get ( ) );
         _isValid = _interopHandle != nullptr;
     }
 
-    DXGIRenderPath::SharedTextureRef DXGIRenderPath::InteropContext::CreateSharedTexture ( const ivec2 & size )
+    SharedTextureRef InteropContext::CreateSharedTexture ( const ivec2 & size )
     {
-        auto texture = std::make_unique<SharedTexture> ( *this, size );
+        auto texture = std::make_unique<SharedTexture> ( size );
         if ( texture->IsValid ( ) ) return std::move ( texture );
 
         return nullptr;
     }
 
-    DXGIRenderPath::InteropContext::~InteropContext ( )
+    InteropContext::~InteropContext ( )
     {
-        wglDXCloseDeviceNV ( _interopHandle );
-        _interopHandle = nullptr;
+        if ( _interopHandle != nullptr )
+        {
+            wglDXCloseDeviceNV ( _interopHandle );
+            _interopHandle = nullptr;
+        }
+
+        _dxgiManager = nullptr;
+        
+        // @leak(andrew): Debug layer is whinging about live objects but is this 
+        // this because the ComPtr destructors haven't had a chance to fire yet?
+        #ifndef _NDEBUG
+        if ( _device )
+        {
+            ComPtr<ID3D11Debug> debug{ nullptr };
+            if ( SUCCEEDED ( _device->QueryInterface ( debug.GetAddressOf ( ) ) ) )
+            {
+                debug->ReportLiveDeviceObjects ( D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL );
+            }
+        }
+        #endif
     }
 
-    DXGIRenderPath::SharedTexture::SharedTexture ( InteropContext& context, const ivec2 & size )
-        : _context ( context )
+    DXGIRenderPath::SharedTexture::SharedTexture ( const ivec2 & size )
     {
         D3D11_TEXTURE2D_DESC desc = {};
         desc.Width = size.x;
@@ -88,26 +177,48 @@ namespace AX::Video
         desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         desc.SampleDesc.Count = 1;
         desc.SampleDesc.Quality = 0;
-        desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-        desc.Usage = D3D11_USAGE_DEFAULT; // @todo(andrew): Confirm this
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET; // | D3D11_BIND_SHADER_RESOURCE;
+        desc.Usage = D3D11_USAGE_DEFAULT;
 
-        // @todo(andrew): Apparently ATI/Intel cards needs a shared handle / wglDXSetResourceShareHandleNV?
-        // Verify this is still the case with DX11
-        if ( SUCCEEDED ( context.Device().CreateTexture2D ( &desc, nullptr, _dxTexture.GetAddressOf ( ) ) ) )
+        auto & context = InteropContext::Get ( );
+
+        if ( SUCCEEDED ( context.Device()->CreateTexture2D ( &desc, nullptr, _dxTexture.GetAddressOf ( ) ) ) )
         {
             gl::Texture::Format fmt;
             fmt.internalFormat ( GL_RGBA ).loadTopDown ( );
             
             _glTexture = gl::Texture::create ( size.x, size.y, fmt );
             _shareHandle = wglDXRegisterObjectNV ( context.Handle(), _dxTexture.Get(), _glTexture->getId(), GL_TEXTURE_2D, WGL_ACCESS_READ_ONLY_NV );
-            _isValid = true;
+            _isValid = _shareHandle != nullptr;
         }
+    }
+
+    bool DXGIRenderPath::SharedTexture::Lock ( )
+    {
+        assert ( !IsLocked ( ) );
+        _isLocked = wglDXLockObjectsNV ( InteropContext::Get().Handle ( ), 1, &_shareHandle );
+        return _isLocked;
+    }
+
+    bool DXGIRenderPath::SharedTexture::Unlock ( )
+    {
+        assert ( IsLocked ( ) );
+        if ( wglDXUnlockObjectsNV ( InteropContext::Get ( ).Handle ( ), 1, &_shareHandle ) )
+        {
+            _isLocked = false;
+            return true;
+        }
+
+        return false;
     }
 
     DXGIRenderPath::SharedTexture::~SharedTexture ( )
     {
-        wglDXUnlockObjectsNV ( _context.Handle(), 1, &_shareHandle );
-        wglDXUnregisterObjectNV ( _context.Handle ( ), _shareHandle );
+        if ( _shareHandle != nullptr )
+        {
+            if ( IsLocked() ) wglDXUnlockObjectsNV ( InteropContext::Get ( ).Handle ( ), 1, &_shareHandle );
+            wglDXUnregisterObjectNV ( InteropContext::Get ( ).Handle ( ), _shareHandle );
+        }
     }
 
     DXGIRenderPath::DXGIRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
@@ -116,32 +227,14 @@ namespace AX::Video
 
     bool DXGIRenderPath::Initialize ( IMFAttributes & attributes )
     {
-        UINT deviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
+        auto & interop = InteropContext::Get ( );
+        if ( !interop.IsValid ( ) ) return false;
 
-        #ifndef _NDEBUG
-        deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-        #endif
+        if ( SUCCEEDED ( attributes.SetUnknown ( MF_MEDIA_ENGINE_DXGI_MANAGER, interop.DXGIManager() ) ) )
+        {
+            return true;
+        }
 
-        UINT resetToken { 0 };
-        if ( !SUCCEEDED ( MFCreateDXGIDeviceManager ( &resetToken, _dxgiManager.GetAddressOf ( ) ) ) ) return false;
-        if ( !SUCCEEDED ( D3D11CreateDevice ( nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, nullptr, 0, D3D11_SDK_VERSION, _device.GetAddressOf ( ), nullptr, nullptr ) ) ) return false;
-        
-        ComPtr<ID3D10Multithread> multiThread{ nullptr };
-        if ( SUCCEEDED ( _device->QueryInterface ( multiThread.GetAddressOf() ) ) )
-        {
-            multiThread->SetMultithreadProtected ( true );
-        }
-        else
-        {
-            return false;
-        }
-        
-        if ( !SUCCEEDED ( _dxgiManager->ResetDevice ( _device.Get ( ), resetToken ) ) ) return false;
-        if ( SUCCEEDED ( attributes.SetUnknown ( MF_MEDIA_ENGINE_DXGI_MANAGER, _dxgiManager.Get ( ) ) ) )
-        {
-            _interopContext = std::make_unique<InteropContext> ( *_device.Get ( ) );
-            return _interopContext->IsValid ( );
-        }
         return false;
     }
 
@@ -150,16 +243,7 @@ namespace AX::Video
         if ( !_sharedTexture || size != _size )
         {
             _size = size;
-
-            if ( _interopContext )
-            {
-                _sharedTexture = _interopContext->CreateSharedTexture ( size );
-                return _sharedTexture != nullptr;
-            }
-            else
-            {
-                return false;
-            }
+            _sharedTexture = InteropContext::Get ( ).CreateSharedTexture ( size );
         }
 
         return ( _sharedTexture != nullptr );
@@ -175,17 +259,25 @@ namespace AX::Video
             RECT dstRect{ 0, 0, _size.x, _size.y };
             MFARGB black{ 0, 0, 0, 1 };
 
-            return SUCCEEDED ( engine->TransferVideoFrame ( _sharedTexture->DXTextureHandle(), &srcRect, &dstRect, &black ) );
+            bool ok = SUCCEEDED ( engine->TransferVideoFrame ( _sharedTexture->DXTextureHandle(), &srcRect, &dstRect, &black ) );
+            if ( ok )
+            {
+                _owner._hasNewFrame.store ( true );
+            }
+
+            return ok;
         }
 
         return false;
     }
 
+    MediaPlayer::FrameLeaseRef DXGIRenderPath::GetFrameLease ( ) const
+    {
+        return std::make_unique<DXGIRenderPathFrameLease> ( _sharedTexture );
+    }
+
     DXGIRenderPath::~DXGIRenderPath ( )
     {
-        // @note(andrew): Make sure _sharedTexture is killed before _interopContext because
-        // _sharedTexture relies on the share handle to unregister itself
-        _sharedTexture = nullptr;
-        _interopContext = nullptr;
+        
     }
 }

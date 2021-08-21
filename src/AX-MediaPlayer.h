@@ -2,8 +2,8 @@
 //  AX-MediaPlayer.h
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 #pragma once
@@ -11,6 +11,7 @@
 #include "cinder/Cinder.h"
 #include "cinder/Surface.h"
 #include "cinder/Signals.h"
+#include "cinder/gl/Texture.h"
 #include "cinder/Filesystem.h"
 #include "cinder/DataSource.h"
 #include "cinder/Noncopyable.h"
@@ -23,14 +24,15 @@ namespace AX::Video
     public:
 
         class Impl;
+        
         enum class Error
         {
-            NoError = 0,
-            Aborted = 1,
-            NetworkError = 2,
-            DecodingError = 3,
-            SourceNotSupported = 4,
-            Encrypted = 5,
+            NoError             = 0,
+            Aborted             = 1,
+            NetworkError        = 2,
+            DecodingError       = 3,
+            SourceNotSupported  = 4,
+            Encrypted           = 5,
         };
 
         enum Flags
@@ -40,8 +42,23 @@ namespace AX::Video
             AudioOnly           = 0x04
         };
 
-        using   EventSignal = ci::signals::Signal<void ( )>;
-        using   ErrorSignal = ci::signals::Signal<void ( Error )>;
+        class FrameLease
+        {
+        public:
+            virtual ~FrameLease ( ) { };
+
+            operator bool ( ) const { return IsValid ( ); }
+            operator ci::gl::TextureRef ( ) const { return ToTexture ( ); }
+            virtual ci::gl::TextureRef ToTexture ( ) const { return nullptr; }
+
+        protected:
+            virtual bool IsValid ( ) const { return false; };
+        };
+
+        using   FrameLeaseRef = std::unique_ptr<FrameLease>;
+        
+        using   EventSignal     = ci::signals::Signal<void ( )>;
+        using   ErrorSignal     = ci::signals::Signal<void ( Error )>;
 
         static  MediaPlayerRef Create ( const ci::DataSourceRef & source, uint32_t flags = 0 );
         static  const std::string & ErrorToString ( Error error );
@@ -63,8 +80,9 @@ namespace AX::Video
         bool    IsLooping ( ) const;
 
         const   ci::ivec2& GetSize ( ) const;
-        inline  ci::Area GetBounds ( ) const { return ci::Area ( ci::ivec2(0), GetSize() ); }
-        
+        inline  ci::Area   GetBounds ( ) const { return ci::Area ( ci::ivec2(0), GetSize() ); }
+        inline  bool       IsHardwareAccelerated ( ) const { return _flags & HardwareAccelerated; }
+
         bool    IsComplete ( ) const;
         bool    IsPlaying ( ) const;
         bool    IsPaused ( ) const;
@@ -78,10 +96,12 @@ namespace AX::Video
 
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const;
-            
-        const ci::Surface8uRef & GetCurrentSurface ( ) const;
+        
+        bool    CheckNewFrame ( ) const;
 
-        EventSignal OnFrameReady;
+        const ci::Surface8uRef & GetSurface ( ) const;
+        FrameLeaseRef GetTexture ( ) const;
+
         EventSignal OnComplete;
         EventSignal OnPlay;
         EventSignal OnPause;
@@ -101,7 +121,8 @@ namespace AX::Video
         MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags );
         bool Update ( );
         
-        std::unique_ptr<Impl> _impl;
-        ci::signals::Connection _updateConnection;
+        uint32_t                 _flags{ 0 };
+        std::unique_ptr<Impl>    _impl;
+        ci::signals::Connection  _updateConnection;
     };
 }

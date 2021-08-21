@@ -2,8 +2,8 @@
 //  AX-MediaPlayerWin32WICRenderPath.h
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 #pragma once

@@ -36,21 +36,13 @@ void SimplePlaybackApp::setup ( )
 {
     ui::Initialize ( );
 
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), AX::Video::MediaPlayer::HardwareAccelerated );
-    //_player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ) );
-    _player->OnFrameReady.connect ( [=]
-    {
-        if ( auto surf = _player->GetCurrentSurface ( ) )
-        {
-            _texture = gl::Texture::create ( *surf );
-        }
-    } );
+    uint32_t flags = AX::Video::MediaPlayer::HardwareAccelerated;
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), flags );
      
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
     _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
-
     _player->Play ( );
 }
 
@@ -62,8 +54,6 @@ void SimplePlaybackApp::draw ( )
 {
     gl::clear ( Colorf::black ( ) );
 
-    if ( _texture ) gl::draw ( _texture, getWindowBounds() );
-
     {
         ui::ScopedWindow window{ "Settings" };
 
@@ -73,11 +63,14 @@ void SimplePlaybackApp::draw ( )
             return;
         }
 
+        if ( !_player ) return;
+
         float position = _player->GetPositionInSeconds ( );
         float duration = _player->GetDurationInSeconds ( );
         float percent = position / duration;
 
-        ui::Text ( "%.2f FPS / HasAudio: %s, HasVideo: %s", getAverageFps ( ), _player->HasAudio ( ) ? "true" : "false", _player->HasVideo ( ) ? "true" : "false" );
+        ui::Text ( "%.2f FPS", getAverageFps ( ) );
+        ui::Text ( "Hardware Accelerated: %s, HasAudio: %s, HasVideo : %s", _player->IsHardwareAccelerated() ? "true" : "false", _player->HasAudio ( ) ? "true" : "false", _player->HasVideo ( ) ? "true" : "false" );
 
         if ( ui::SliderFloat ( "Seek", &percent, 0.0f, 1.0f ) )
         {
@@ -125,6 +118,27 @@ void SimplePlaybackApp::draw ( )
             }
         }
     }
+
+    if ( _player->CheckNewFrame ( ) )
+    {
+        // Only true if using the CPU render path
+        if ( auto surface = _player->GetSurface ( ) )
+        {
+            _texture = gl::Texture::create ( *surface );
+        }
+    }
+
+    // Only true if using DXGI path
+    if ( auto lease = _player->GetTexture ( ) )
+    {
+        // You can now use this texture until `lease` goes out
+        // of scope (it will Unlock() the texture when destructing )
+        gl::draw ( *lease, getWindowBounds ( ) );
+    }
+    else
+    {
+        if ( _texture ) gl::draw ( _texture, getWindowBounds ( ) );
+    }
 }
 
 void Init ( App::Settings * settings )
@@ -132,4 +146,4 @@ void Init ( App::Settings * settings )
     settings->setConsoleWindowEnabled ( );
 }
 
-CINDER_APP ( SimplePlaybackApp, RendererGl, Init );
+CINDER_APP ( SimplePlaybackApp, RendererGl ( RendererGl::Options() ), Init );

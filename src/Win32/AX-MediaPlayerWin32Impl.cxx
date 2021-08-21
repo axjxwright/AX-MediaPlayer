@@ -2,8 +2,8 @@
 //  AX-MediaPlayerWin32Impl.cxx
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 #include "AX-MediaPlayerWin32Impl.h"
@@ -585,12 +585,24 @@ namespace AX::Video
             {
                 if ( _renderPath->ProcessFrame ( ) )
                 {
-                    _owner.OnFrameReady.emit ( );
+                    _hasNewFrame.store ( true );
                 }
             }
         }
 
         return false;
+    }
+
+    const Surface8uRef & MediaPlayer::Impl::GetSurface ( ) const
+    {
+        _hasNewFrame.store ( false );
+        return _surface;
+    }
+
+    MediaPlayer::FrameLeaseRef MediaPlayer::Impl::GetTexture ( ) const
+    {
+        _hasNewFrame.store ( false );
+        return _renderPath->GetFrameLease ( );
     }
 
     MediaPlayer::Impl::~Impl ( )
