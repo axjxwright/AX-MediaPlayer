@@ -10,6 +10,7 @@
 #include "AX-MediaPlayerWin32WICRenderPath.h"
 #include "AX-MediaPlayerWin32DXGIRenderPath.h"
 
+#include "cinder/app/App.h"
 #include "cinder/DataSource.h"
 #include <string>
 #include <unordered_map>
@@ -110,42 +111,6 @@ namespace
         MFPutWorkItem2 ( workItem->GetQueue ( ), 0, workItem.Get ( ), nullptr );
     }
 
-    // @note(andrew): Current only the audio related functions ( Mute / Volume ) seems
-    // to mind about explicitly being run in the MTA thread, but if you're seeing any
-    // weird crashes, the first thing to try is to wrap any interaction with _mediaEngine
-    // in a call to RunSynchronousInMTAThread ( ... )
-
-    inline void RunSynchronousInMTAThread ( std::function<void ( )> callback )
-    {
-        APTTYPE apartmentType = {};
-        APTTYPEQUALIFIER qualifier = {};
-
-        assert ( SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) ) );
-
-        if ( apartmentType == APTTYPE_MTA )
-        {
-            // Already in the MTA thread, just run the code
-            // @note(andrew): Do I need to do some co-init stuff here?
-            callback ( );
-        }
-        else
-        {
-            std::condition_variable wait;
-            std::mutex lock;
-            std::atomic_bool isDone{ false };
-
-            MFPutWorkItem ( [&] ( ) 
-            {
-                callback ( );
-                isDone.store ( true );
-                wait.notify_one ( );
-            } );
-
-            std::unique_lock lk{ lock };
-            wait.wait ( lk, [&] { return isDone.load ( ); } );
-        }
-    }
-
     std::string MFEventToString ( MF_MEDIA_ENGINE_EVENT event )
     {
         static std::unordered_map<MF_MEDIA_ENGINE_EVENT, std::string> kMessages =
@@ -232,6 +197,47 @@ namespace
 
 namespace AX::Video
 {
+    // @note(andrew): Current only the audio related functions ( Mute / Volume ) seems
+    // to mind about explicitly being run in the MTA thread, but if you're seeing any
+    // weird crashes, the first thing to try is to wrap any interaction with _mediaEngine
+    // in a call to RunSynchronousInMTAThread ( ... )
+
+    void RunSynchronousInMTAThread ( std::function<void ( )> callback )
+    {
+        APTTYPE apartmentType = {};
+        APTTYPEQUALIFIER qualifier = {};
+
+        assert ( SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) ) );
+
+        if ( apartmentType == APTTYPE_MTA )
+        {
+            // Already in the MTA thread, just run the code
+            // @note(andrew): Do I need to do some co-init stuff here?
+            callback ( );
+        }
+        else
+        {
+            std::condition_variable wait;
+            std::mutex lock;
+            std::atomic_bool isDone{ false };
+
+            MFPutWorkItem ( [&] ( )
+            {
+                callback ( );
+                isDone.store ( true );
+                wait.notify_one ( );
+            } );
+
+            std::unique_lock lk{ lock };
+            wait.wait ( lk, [&] { return isDone.load ( ); } );
+        }
+    }
+
+    void RunSynchronousInMainThread ( std::function<void ( )> callback )
+    {
+        app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
+    }
+
     MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, uint32_t flags )
         : _owner ( owner )
         , _source ( source )
@@ -268,6 +274,8 @@ namespace AX::Video
                 _renderPath = std::make_unique<WICRenderPath> ( *this, source, _flags );
             }
 
+            _renderPath->Initialize ( *attributes.Get() );
+
             if ( SUCCEEDED ( factory->CreateInstance ( flags, attributes.Get ( ), _mediaEngine.GetAddressOf ( ) ) ) )
             {
                 std::wstring actualPath;
@@ -287,6 +295,9 @@ namespace AX::Video
         }
     }
 
+    // @warn(andrew): This is not on the main thread, make sure to act accordingly!
+    // i.e no GL activity here.
+
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
         switch ( event )
@@ -303,7 +314,11 @@ namespace AX::Video
                 _mediaEngine->GetNativeVideoSize ( &w, &h );
                 _size = ivec2 ( w, h );
                 _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-                _renderPath->InitializeRenderTarget ( _size );
+
+                RunSynchronousInMainThread ( [&]
+                {
+                    _renderPath->InitializeRenderTarget ( _size );
+                } );
 
                 break;
             }

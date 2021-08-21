@@ -26,7 +26,7 @@ public:
 
 protected:
 
-    AX::Video::MediaPlayerRef    _player;
+    AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
     gl::TextureRef _texture;
@@ -37,6 +37,7 @@ void SimplePlaybackApp::setup ( )
     ui::Initialize ( );
 
     _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), AX::Video::MediaPlayer::HardwareAccelerated );
+    //_player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ) );
     _player->OnFrameReady.connect ( [=]
     {
         if ( auto surf = _player->GetCurrentSurface ( ) )
@@ -59,6 +60,8 @@ void SimplePlaybackApp::update ( )
 
 void SimplePlaybackApp::draw ( )
 {
+    gl::clear ( Colorf::black ( ) );
+
     if ( _texture ) gl::draw ( _texture, getWindowBounds() );
 
     {

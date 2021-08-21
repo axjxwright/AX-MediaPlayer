@@ -36,6 +36,9 @@ using namespace Microsoft::WRL;
 
 namespace AX::Video
 {
+    void RunSynchronousInMTAThread  ( std::function<void ( )> callback );
+    void RunSynchronousInMainThread ( std::function<void ( )> callback );
+
     class MediaPlayer::Impl : public IMFMediaEngineNotify
     {
     public:
@@ -51,6 +54,7 @@ namespace AX::Video
 
             virtual ~RenderPath ( ) { };
             
+            virtual bool Initialize ( IMFAttributes & attributes ) { return true; }
             virtual bool InitializeRenderTarget ( const ci::ivec2 & size ) = 0;
             virtual bool ProcessFrame ( ) = 0;
             inline const ci::ivec2 & GetSize ( ) const { return _size; };
