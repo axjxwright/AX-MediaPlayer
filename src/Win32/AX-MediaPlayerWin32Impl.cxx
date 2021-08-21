@@ -301,77 +301,77 @@ namespace AX::Video
 
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
-        switch ( event )
+        // @note(andrew): Make sure all signals are emitted on the main thread
+        RunSynchronousInMainThread ( [&]
         {
-            case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
+            switch ( event )
             {
-                _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-                break;
-            }
-
-            case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-            {
-                DWORD w, h;
-                _mediaEngine->GetNativeVideoSize ( &w, &h );
-                _size = ivec2 ( w, h );
-                _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-
-                RunSynchronousInMainThread ( [&]
+                case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
                 {
+                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
+                    break;
+                }
+
+                case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
+                {
+                    DWORD w, h;
+                    _mediaEngine->GetNativeVideoSize ( &w, &h );
+                    _size = ivec2 ( w, h );
+                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
                     _renderPath->InitializeRenderTarget ( _size );
-                } );
+                
+                    break;
+                }
 
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_PLAY:
+                {
+                    _owner.OnPlay.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_PLAY:
-            {
-                _owner.OnPlay.emit ( );
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_PAUSE:
+                {
+                    _owner.OnPause.emit ( );
+                    break;
+                }
+                case MF_MEDIA_ENGINE_EVENT_ENDED:
+                {
+                    _owner.OnComplete.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_PAUSE:
-            {
-                _owner.OnPause.emit ( );
-                break;
-            }
-            case MF_MEDIA_ENGINE_EVENT_ENDED:
-            {
-                _owner.OnComplete.emit ( );
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_SEEKING:
+                {
+                    _owner.OnSeekStart.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_SEEKING:
-            {
-                _owner.OnSeekStart.emit ( );
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_SEEKED:
+                {
+                    _owner.OnSeekEnd.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_SEEKED:
-            {
-                _owner.OnSeekEnd.emit ( );
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED :
+                {
+                    _owner.OnBufferingStart.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED :
-            {
-                _owner.OnBufferingStart.emit ( );
-                break;
-            }
+                case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
+                {
+                    _owner.OnBufferingEnd.emit ( );
+                    break;
+                }
 
-            case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
-            {
-                _owner.OnBufferingEnd.emit ( );
-                break;
+                case MF_MEDIA_ENGINE_EVENT_ERROR:
+                {
+                    MF_MEDIA_ENGINE_ERR error = static_cast<MF_MEDIA_ENGINE_ERR> ( param1 );
+                    _owner.OnError.emit ( AXErrorFromMFError ( error ) );
+                    break;
+                }
             }
-
-            case MF_MEDIA_ENGINE_EVENT_ERROR:
-            {
-                MF_MEDIA_ENGINE_ERR error = static_cast<MF_MEDIA_ENGINE_ERR> ( param1 );
-                _owner.OnError.emit ( AXErrorFromMFError ( error ) );
-                break;
-            }
-        }
+        } );
 
         return S_OK;
     }
