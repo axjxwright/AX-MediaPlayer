@@ -47,14 +47,14 @@ namespace AX
             }
         }
 
-        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source )
+        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, uint32_t flags )
         {
-            return MediaPlayerRef ( new MediaPlayer ( source ) );
+            return MediaPlayerRef ( new MediaPlayer ( source, flags ) );
         }
 
-        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source )
+        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags )
         {
-            _impl = std::make_unique<Impl> ( *this, source );
+            _impl = std::make_unique<Impl> ( *this, source, flags );
             _updateConnection = app::App::get ( )->getSignalUpdate ( ).connect ( [=] { Update ( ); } );
         }
 

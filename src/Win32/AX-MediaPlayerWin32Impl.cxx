@@ -7,6 +7,8 @@
 //
 
 #include "AX-MediaPlayerWin32Impl.h"
+#include "AX-MediaPlayerWin32WICRenderPath.h"
+#include "AX-MediaPlayerWin32DXGIRenderPath.h"
 
 #include "cinder/DataSource.h"
 #include <string>
@@ -230,9 +232,10 @@ namespace
 
 namespace AX::Video
 {
-    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source )
+    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, uint32_t flags )
         : _owner ( owner )
         , _source ( source )
+        , _flags ( flags )
     {
         MFStartup ( MF_VERSION );
 
@@ -245,6 +248,26 @@ namespace AX::Video
             attributes->SetUnknown ( MF_MEDIA_ENGINE_CALLBACK, this );
 
             DWORD flags = MF_MEDIA_ENGINE_REAL_TIME_MODE;
+
+            if ( _flags & MediaPlayer::NoAudio )
+            {
+                flags |= MF_MEDIA_ENGINE_FORCEMUTE;
+            }
+
+            if ( _flags & MediaPlayer::AudioOnly )
+            {
+                flags |= MF_MEDIA_ENGINE_AUDIOONLY;
+            }
+
+            if ( _flags & MediaPlayer::HardwareAccelerated )
+            {
+                _renderPath = std::make_unique<DXGIRenderPath> ( *this, source, _flags );
+            }
+            else
+            {
+                _renderPath = std::make_unique<WICRenderPath> ( *this, source, _flags );
+            }
+
             if ( SUCCEEDED ( factory->CreateInstance ( flags, attributes.Get ( ), _mediaEngine.GetAddressOf ( ) ) ) )
             {
                 std::wstring actualPath;
@@ -280,8 +303,8 @@ namespace AX::Video
                 _mediaEngine->GetNativeVideoSize ( &w, &h );
                 _size = ivec2 ( w, h );
                 _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
+                _renderPath->InitializeRenderTarget ( _size );
 
-                CreateBackingBitmap ( w, h );
                 break;
             }
 
@@ -359,18 +382,6 @@ namespace AX::Video
     ULONG STDMETHODCALLTYPE MediaPlayer::Impl::AddRef ( ) { return 0;  }
     ULONG STDMETHODCALLTYPE MediaPlayer::Impl::Release ( ) { return 0; }
     
-    void MediaPlayer::Impl::CreateBackingBitmap ( int w, int h )
-    {
-        ComPtr<IWICImagingFactory> factory;
-        if ( SUCCEEDED ( CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &factory ) ) ) )
-        {
-            if ( SUCCEEDED ( factory->CreateBitmap ( w, h, GUID_WICPixelFormat32bppBGRA, WICBitmapCacheOnDemand, _wicBitmap.GetAddressOf ( ) ) ) )
-            {
-                // @todo(andrew): Gracefully handle these kinds of errors?
-            }
-        }
-    }
-
     void MediaPlayer::Impl::Play ( )
     {
         if ( _mediaEngine )
@@ -557,40 +568,9 @@ namespace AX::Video
             LONGLONG time;
             if ( SUCCEEDED ( _mediaEngine->OnVideoStreamTick ( &time ) ) )
             {
-                if ( _wicBitmap )
+                if ( _renderPath->ProcessFrame ( ) )
                 {
-                    MFVideoNormalizedRect srcRect{ 0.0f, 0.0f, 1.0f, 1.0f };
-                    RECT dstRect{ 0, 0, _size.x, _size.y };
-                    MFARGB black{ 0, 0, 0, 1 };
-
-                    if ( SUCCEEDED ( _mediaEngine->TransferVideoFrame ( _wicBitmap.Get ( ), &srcRect, &dstRect, &black ) ) )
-                    {
-                        ComPtr<IWICBitmapLock> lockedData;
-                        DWORD flags = WICBitmapLockRead;
-                        WICRect srcRect{ 0, 0, _size.x, _size.y };
-
-                        if ( SUCCEEDED ( _wicBitmap->Lock ( &srcRect, flags, lockedData.GetAddressOf ( ) ) ) )
-                        {
-                            UINT stride{ 0 };
-
-                            if ( SUCCEEDED ( lockedData->GetStride ( &stride ) ) )
-                            {
-                                UINT bufferSize{ 0 };
-                                BYTE * data{ nullptr };
-
-                                if ( SUCCEEDED ( lockedData->GetDataPointer ( &bufferSize, &data ) ) )
-                                {
-                                    Surface8u surface ( data, _size.x, _size.y, stride, SurfaceChannelOrder::BGRA );
-
-                                    // @note(andrew): I believe constructing the Surface8u this way forces it to copy the data
-                                    // into its own buffer
-                                    _surface = Surface8u::create ( surface );
-                                    _owner.OnFrameReady.emit ( );
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+                    _owner.OnFrameReady.emit ( );
                 }
             }
         }

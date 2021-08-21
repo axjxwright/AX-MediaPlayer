@@ -22,6 +22,7 @@ namespace AX::Video
     {
     public:
 
+        class Impl;
         enum class Error
         {
             NoError = 0,
@@ -32,10 +33,17 @@ namespace AX::Video
             Encrypted = 5,
         };
 
-        using EventSignal = ci::signals::Signal<void ( )>;
-        using ErrorSignal = ci::signals::Signal<void ( Error )>;
+        enum Flags
+        {
+            HardwareAccelerated = 0x01,
+            NoAudio             = 0x02,
+            AudioOnly           = 0x04
+        };
 
-        static  MediaPlayerRef Create ( const ci::DataSourceRef & source );
+        using   EventSignal = ci::signals::Signal<void ( )>;
+        using   ErrorSignal = ci::signals::Signal<void ( Error )>;
+
+        static  MediaPlayerRef Create ( const ci::DataSourceRef & source, uint32_t flags = 0 );
         static  const std::string & ErrorToString ( Error error );
 
         void    Play ( );
@@ -90,10 +98,9 @@ namespace AX::Video
 
     protected:
 
-        MediaPlayer ( const ci::DataSourceRef & source );
+        MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags );
         bool Update ( );
-
-        class Impl;
+        
         std::unique_ptr<Impl> _impl;
         ci::signals::Connection _updateConnection;
     };

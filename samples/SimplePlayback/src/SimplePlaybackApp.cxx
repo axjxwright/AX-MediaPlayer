@@ -36,7 +36,7 @@ void SimplePlaybackApp::setup ( )
 {
     ui::Initialize ( );
 
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ) );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), AX::Video::MediaPlayer::HardwareAccelerated );
     _player->OnFrameReady.connect ( [=]
     {
         if ( auto surf = _player->GetCurrentSurface ( ) )
@@ -66,7 +66,7 @@ void SimplePlaybackApp::draw ( )
 
         if ( _error != AX::Video::MediaPlayer::Error::NoError )
         {
-            ui::TextColored ( ImVec4 ( 0.8, 0.1, 0.1, 1.0f ), "Error: %s", AX::Video::MediaPlayer::ErrorToString ( _error ).c_str ( ) );
+            ui::TextColored ( ImVec4 ( 0.8f, 0.1f, 0.1f, 1.0f ), "Error: %s", AX::Video::MediaPlayer::ErrorToString ( _error ).c_str ( ) );
             return;
         }
 

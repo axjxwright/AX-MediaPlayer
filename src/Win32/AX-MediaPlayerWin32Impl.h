@@ -39,7 +39,35 @@ namespace AX::Video
     class MediaPlayer::Impl : public IMFMediaEngineNotify
     {
     public:
-        Impl ( MediaPlayer & owner, const ci::DataSourceRef & source );
+        class RenderPath
+        {
+        public:
+
+            RenderPath ( MediaPlayer::Impl& owner, const ci::DataSourceRef & source, uint32_t flags )
+                : _owner ( owner )
+                , _source ( source )
+                , _flags ( flags )
+            { }
+
+            virtual ~RenderPath ( ) { };
+            
+            virtual bool InitializeRenderTarget ( const ci::ivec2 & size ) = 0;
+            virtual bool ProcessFrame ( ) = 0;
+            inline const ci::ivec2 & GetSize ( ) const { return _size; };
+
+        protected:
+            uint32_t            _flags{ 0 };
+            ci::DataSourceRef   _source;
+            MediaPlayer::Impl & _owner;
+            ci::ivec2           _size;
+        };
+
+        using RenderPathRef = std::unique_ptr<RenderPath>;
+        friend class RenderPath;
+        friend class DXGIRenderPath;
+        friend class WICRenderPath;
+
+        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, uint32_t flags );
 
         bool    Update ( );
 
@@ -87,16 +115,14 @@ namespace AX::Video
 
     protected:
 
-        void CreateBackingBitmap ( int w, int h );
-
         MediaPlayer & _owner;
         ci::DataSourceRef _source;
         ci::ivec2 _size;
+        uint32_t _flags{ 0 };
         float _duration{ 0.0f };
         ci::Surface8uRef _surface{ nullptr };
-        ULONG _refCount{ 0 };
+        RenderPathRef       _renderPath;
 
         ComPtr<IMFMediaEngine> _mediaEngine{ nullptr };
-        ComPtr<IWICBitmap> _wicBitmap{ nullptr };
     };
 }
