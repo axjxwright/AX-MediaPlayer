@@ -302,7 +302,7 @@ namespace AX::Video
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
         // @note(andrew): Make sure all signals are emitted on the main thread
-        RunSynchronousInMainThread ( [&]
+        app::App::get()->dispatchAsync ( [=]
         {
             switch ( event )
             {
