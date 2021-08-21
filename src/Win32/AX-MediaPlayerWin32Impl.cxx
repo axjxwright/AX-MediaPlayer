@@ -2,12 +2,15 @@
 //  AX-MediaPlayerWin32Impl.cxx
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 #include "AX-MediaPlayerWin32Impl.h"
+#include "AX-MediaPlayerWin32WICRenderPath.h"
+#include "AX-MediaPlayerWin32DXGIRenderPath.h"
 
+#include "cinder/app/App.h"
 #include "cinder/DataSource.h"
 #include <string>
 #include <unordered_map>
@@ -108,42 +111,6 @@ namespace
         MFPutWorkItem2 ( workItem->GetQueue ( ), 0, workItem.Get ( ), nullptr );
     }
 
-    // @note(andrew): Current only the audio related functions ( Mute / Volume ) seems
-    // to mind about explicitly being run in the MTA thread, but if you're seeing any
-    // weird crashes, the first thing to try is to wrap any interaction with _mediaEngine
-    // in a call to RunSynchronousInMTAThread ( ... )
-
-    inline void RunSynchronousInMTAThread ( std::function<void ( )> callback )
-    {
-        APTTYPE apartmentType = {};
-        APTTYPEQUALIFIER qualifier = {};
-
-        assert ( SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) ) );
-
-        if ( apartmentType == APTTYPE_MTA )
-        {
-            // Already in the MTA thread, just run the code
-            // @note(andrew): Do I need to do some co-init stuff here?
-            callback ( );
-        }
-        else
-        {
-            std::condition_variable wait;
-            std::mutex lock;
-            std::atomic_bool isDone{ false };
-
-            MFPutWorkItem ( [&] ( ) 
-            {
-                callback ( );
-                isDone.store ( true );
-                wait.notify_one ( );
-            } );
-
-            std::unique_lock lk{ lock };
-            wait.wait ( lk, [&] { return isDone.load ( ); } );
-        }
-    }
-
     std::string MFEventToString ( MF_MEDIA_ENGINE_EVENT event )
     {
         static std::unordered_map<MF_MEDIA_ENGINE_EVENT, std::string> kMessages =
@@ -230,9 +197,51 @@ namespace
 
 namespace AX::Video
 {
-    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source )
+    // @note(andrew): Current only the audio related functions ( Mute / Volume ) seems
+    // to mind about explicitly being run in the MTA thread, but if you're seeing any
+    // weird crashes, the first thing to try is to wrap any interaction with _mediaEngine
+    // in a call to RunSynchronousInMTAThread ( ... )
+
+    void RunSynchronousInMTAThread ( std::function<void ( )> callback )
+    {
+        APTTYPE apartmentType = {};
+        APTTYPEQUALIFIER qualifier = {};
+
+        assert ( SUCCEEDED ( CoGetApartmentType ( &apartmentType, &qualifier ) ) );
+
+        if ( apartmentType == APTTYPE_MTA )
+        {
+            // Already in the MTA thread, just run the code
+            // @note(andrew): Do I need to do some co-init stuff here?
+            callback ( );
+        }
+        else
+        {
+            std::condition_variable wait;
+            std::mutex lock;
+            std::atomic_bool isDone{ false };
+
+            MFPutWorkItem ( [&] ( )
+            {
+                callback ( );
+                isDone.store ( true );
+                wait.notify_one ( );
+            } );
+
+            std::unique_lock lk{ lock };
+            wait.wait ( lk, [&] { return isDone.load ( ); } );
+        }
+    }
+
+    void RunSynchronousInMainThread ( std::function<void ( )> callback )
+    {
+        app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
+    }
+
+    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, uint32_t flags )
         : _owner ( owner )
         , _source ( source )
+        , _flags ( flags )
     {
         MFStartup ( MF_VERSION );
 
@@ -245,6 +254,28 @@ namespace AX::Video
             attributes->SetUnknown ( MF_MEDIA_ENGINE_CALLBACK, this );
 
             DWORD flags = MF_MEDIA_ENGINE_REAL_TIME_MODE;
+
+            if ( _flags & MediaPlayer::NoAudio )
+            {
+                flags |= MF_MEDIA_ENGINE_FORCEMUTE;
+            }
+
+            if ( _flags & MediaPlayer::AudioOnly )
+            {
+                flags |= MF_MEDIA_ENGINE_AUDIOONLY;
+            }
+
+            if ( _flags & MediaPlayer::HardwareAccelerated )
+            {
+                _renderPath = std::make_unique<DXGIRenderPath> ( *this, source, _flags );
+            }
+            else
+            {
+                _renderPath = std::make_unique<WICRenderPath> ( *this, source, _flags );
+            }
+
+            _renderPath->Initialize ( *attributes.Get() );
+
             if ( SUCCEEDED ( factory->CreateInstance ( flags, attributes.Get ( ), _mediaEngine.GetAddressOf ( ) ) ) )
             {
                 std::wstring actualPath;
@@ -264,6 +295,9 @@ namespace AX::Video
         }
     }
 
+    // @warn(andrew): This is not on the main thread, make sure to act accordingly!
+    // i.e no GL activity here.
+
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
         switch ( event )
@@ -281,7 +315,11 @@ namespace AX::Video
                 _size = ivec2 ( w, h );
                 _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
 
-                CreateBackingBitmap ( w, h );
+                RunSynchronousInMainThread ( [&]
+                {
+                    _renderPath->InitializeRenderTarget ( _size );
+                } );
+
                 break;
             }
 
@@ -359,18 +397,6 @@ namespace AX::Video
     ULONG STDMETHODCALLTYPE MediaPlayer::Impl::AddRef ( ) { return 0;  }
     ULONG STDMETHODCALLTYPE MediaPlayer::Impl::Release ( ) { return 0; }
     
-    void MediaPlayer::Impl::CreateBackingBitmap ( int w, int h )
-    {
-        ComPtr<IWICImagingFactory> factory;
-        if ( SUCCEEDED ( CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &factory ) ) ) )
-        {
-            if ( SUCCEEDED ( factory->CreateBitmap ( w, h, GUID_WICPixelFormat32bppBGRA, WICBitmapCacheOnDemand, _wicBitmap.GetAddressOf ( ) ) ) )
-            {
-                // @todo(andrew): Gracefully handle these kinds of errors?
-            }
-        }
-    }
-
     void MediaPlayer::Impl::Play ( )
     {
         if ( _mediaEngine )
@@ -557,45 +583,26 @@ namespace AX::Video
             LONGLONG time;
             if ( SUCCEEDED ( _mediaEngine->OnVideoStreamTick ( &time ) ) )
             {
-                if ( _wicBitmap )
+                if ( _renderPath->ProcessFrame ( ) )
                 {
-                    MFVideoNormalizedRect srcRect{ 0.0f, 0.0f, 1.0f, 1.0f };
-                    RECT dstRect{ 0, 0, _size.x, _size.y };
-                    MFARGB black{ 0, 0, 0, 1 };
-
-                    if ( SUCCEEDED ( _mediaEngine->TransferVideoFrame ( _wicBitmap.Get ( ), &srcRect, &dstRect, &black ) ) )
-                    {
-                        ComPtr<IWICBitmapLock> lockedData;
-                        DWORD flags = WICBitmapLockRead;
-                        WICRect srcRect{ 0, 0, _size.x, _size.y };
-
-                        if ( SUCCEEDED ( _wicBitmap->Lock ( &srcRect, flags, lockedData.GetAddressOf ( ) ) ) )
-                        {
-                            UINT stride{ 0 };
-
-                            if ( SUCCEEDED ( lockedData->GetStride ( &stride ) ) )
-                            {
-                                UINT bufferSize{ 0 };
-                                BYTE * data{ nullptr };
-
-                                if ( SUCCEEDED ( lockedData->GetDataPointer ( &bufferSize, &data ) ) )
-                                {
-                                    Surface8u surface ( data, _size.x, _size.y, stride, SurfaceChannelOrder::BGRA );
-
-                                    // @note(andrew): I believe constructing the Surface8u this way forces it to copy the data
-                                    // into its own buffer
-                                    _surface = Surface8u::create ( surface );
-                                    _owner.OnFrameReady.emit ( );
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+                    _hasNewFrame.store ( true );
                 }
             }
         }
 
         return false;
+    }
+
+    const Surface8uRef & MediaPlayer::Impl::GetSurface ( ) const
+    {
+        _hasNewFrame.store ( false );
+        return _surface;
+    }
+
+    MediaPlayer::FrameLeaseRef MediaPlayer::Impl::GetTexture ( ) const
+    {
+        _hasNewFrame.store ( false );
+        return _renderPath->GetFrameLease ( );
     }
 
     MediaPlayer::Impl::~Impl ( )

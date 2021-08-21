@@ -2,8 +2,9 @@
 //  AX-MediaPlayer.cxx
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
+//  
 //
 
 #include "AX-MediaPlayer.h"
@@ -47,14 +48,15 @@ namespace AX
             }
         }
 
-        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source )
+        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, uint32_t flags )
         {
-            return MediaPlayerRef ( new MediaPlayer ( source ) );
+            return MediaPlayerRef ( new MediaPlayer ( source, flags ) );
         }
 
-        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source )
+        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags )
+            : _flags ( flags )
         {
-            _impl = std::make_unique<Impl> ( *this, source );
+            _impl = std::make_unique<Impl> ( *this, source, flags );
             _updateConnection = app::App::get ( )->getSignalUpdate ( ).connect ( [=] { Update ( ); } );
         }
 
@@ -173,9 +175,19 @@ namespace AX
             return _impl->GetDurationInSeconds ( );
         }
 
-        const Surface8uRef & MediaPlayer::GetCurrentSurface ( ) const
+        bool MediaPlayer::CheckNewFrame ( ) const
         {
-            return _impl->GetCurrentSurface ( );
+            return _impl->CheckNewFrame ( );
+        }
+
+        const Surface8uRef & MediaPlayer::GetSurface ( ) const
+        {
+            return _impl->GetSurface ( );
+        }
+
+        MediaPlayer::FrameLeaseRef MediaPlayer::GetTexture ( ) const
+        {
+            return _impl->GetTexture ( );
         }
 
         MediaPlayer::~MediaPlayer ( )

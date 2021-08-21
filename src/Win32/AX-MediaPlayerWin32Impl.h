@@ -2,8 +2,8 @@
 //  AX-MediaPlayerWin32Impl.h
 //  AX-MediaPlayer
 //
-//  Created by Andrew Wright on 17/08/21.
-//  (c) 2021 AX Interactive
+//  Created by Andrew Wright (@axjxwright) on 17/08/21.
+//  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
 #pragma once
@@ -36,10 +36,44 @@ using namespace Microsoft::WRL;
 
 namespace AX::Video
 {
+    void RunSynchronousInMTAThread  ( std::function<void ( )> callback );
+    void RunSynchronousInMainThread ( std::function<void ( )> callback );
+
     class MediaPlayer::Impl : public IMFMediaEngineNotify
     {
     public:
-        Impl ( MediaPlayer & owner, const ci::DataSourceRef & source );
+        class RenderPath
+        {
+        public:
+
+            RenderPath ( MediaPlayer::Impl& owner, const ci::DataSourceRef & source, uint32_t flags )
+                : _owner ( owner )
+                , _source ( source )
+                , _flags ( flags )
+            { }
+
+            virtual ~RenderPath ( ) { };
+            
+            virtual bool Initialize ( IMFAttributes & attributes ) { return true; }
+            virtual bool InitializeRenderTarget ( const ci::ivec2 & size ) = 0;
+            virtual bool ProcessFrame ( ) = 0;
+            virtual MediaPlayer::FrameLeaseRef GetFrameLease ( ) const { return nullptr; }
+            inline const ci::ivec2 & GetSize ( ) const { return _size; };
+
+
+        protected:
+            uint32_t            _flags{ 0 };
+            ci::DataSourceRef   _source;
+            MediaPlayer::Impl & _owner;
+            ci::ivec2           _size;
+        };
+
+        using RenderPathRef = std::unique_ptr<RenderPath>;
+        friend class RenderPath;
+        friend class DXGIRenderPath;
+        friend class WICRenderPath;
+
+        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, uint32_t flags );
 
         bool    Update ( );
 
@@ -75,7 +109,9 @@ namespace AX::Video
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const { return _duration; }
 
-        const   ci::Surface8uRef & GetCurrentSurface ( ) const { return _surface; }
+        bool    CheckNewFrame ( ) const { return _hasNewFrame.load ( ); }
+        const   ci::Surface8uRef & GetSurface ( ) const;
+        MediaPlayer::FrameLeaseRef GetTexture ( ) const;
 
         HRESULT STDMETHODCALLTYPE EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 ) override;
         HRESULT STDMETHODCALLTYPE QueryInterface ( REFIID riid, LPVOID * ppvObj ) override;
@@ -87,16 +123,14 @@ namespace AX::Video
 
     protected:
 
-        void CreateBackingBitmap ( int w, int h );
-
-        MediaPlayer & _owner;
-        ci::DataSourceRef _source;
-        ci::ivec2 _size;
-        float _duration{ 0.0f };
-        ci::Surface8uRef _surface{ nullptr };
-        ULONG _refCount{ 0 };
-
-        ComPtr<IMFMediaEngine> _mediaEngine{ nullptr };
-        ComPtr<IWICBitmap> _wicBitmap{ nullptr };
+        MediaPlayer &               _owner;
+        ci::DataSourceRef           _source;
+        ci::ivec2                   _size;
+        uint32_t                    _flags{ 0 };
+        float                       _duration{ 0.0f };
+        ci::Surface8uRef            _surface{ nullptr };
+        RenderPathRef               _renderPath;
+        ComPtr<IMFMediaEngine>      _mediaEngine{ nullptr };
+        mutable std::atomic_bool    _hasNewFrame{ false };
     };
 }
