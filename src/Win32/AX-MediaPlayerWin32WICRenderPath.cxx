@@ -30,7 +30,7 @@ namespace AX::Video
 
             if ( _wicFactory )
             {
-                _owner._surface = Surface8u::create ( size.x, size.y, true );
+                _owner._surface = Surface8u::create ( size.x, size.y, true, SurfaceChannelOrder::BGRA );
                 return SUCCEEDED ( _wicFactory->CreateBitmap ( size.x, size.y, GUID_WICPixelFormat32bppBGRA, WICBitmapCacheOnDemand, _wicBitmap.GetAddressOf ( ) ) );
             }
             else
