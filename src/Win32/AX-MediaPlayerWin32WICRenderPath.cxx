@@ -12,6 +12,26 @@ using namespace ci;
 
 namespace AX::Video
 {
+    class WICRenderPathFrameLease : public MediaPlayer::FrameLease
+    {
+    public:
+
+        WICRenderPathFrameLease ( const Surface8uRef& surface )
+        {
+            if ( surface )
+            {
+                _texture = gl::Texture::create ( *surface, gl::Texture::Format ( ).loadTopDown ( ) );
+            }
+        }
+
+        inline bool    IsValid ( ) const override { return ToTexture ( ) != nullptr; }
+        gl::TextureRef ToTexture ( ) const override { return _texture; };
+
+    protected:
+
+        gl::TextureRef _texture{ nullptr };
+    };
+
     WICRenderPath::WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
         : RenderPath ( owner, source, flags )
     {
@@ -80,5 +100,10 @@ namespace AX::Video
         }
 
         return false;
+    }
+
+    MediaPlayer::FrameLeaseRef WICRenderPath::GetFrameLease ( ) const
+    {
+        return std::make_unique<WICRenderPathFrameLease> ( _owner._surface );
     }
 }

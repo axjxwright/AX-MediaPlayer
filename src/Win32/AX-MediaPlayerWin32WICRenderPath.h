@@ -20,6 +20,7 @@ namespace AX::Video
         
         bool ProcessFrame ( ) override;
         bool InitializeRenderTarget ( const ci::ivec2 & size ) override;
+        MediaPlayer::FrameLeaseRef GetFrameLease ( ) const override;
     
     protected:
 

@@ -156,7 +156,7 @@ void SimplePlaybackApp::draw ( )
         // Only true if using the CPU render path
         if ( auto surface = _player->GetSurface ( ) )
         {
-            _texture = gl::Texture::create ( *surface, gl::Texture::Format ( ).loadTopDown() );
+            _texture = *_player->GetTexture ( );
         }
     }
 
