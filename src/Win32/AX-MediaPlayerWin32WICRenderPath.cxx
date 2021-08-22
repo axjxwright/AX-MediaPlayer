@@ -15,7 +15,10 @@ namespace AX::Video
     WICRenderPath::WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
         : RenderPath ( owner, source, flags )
     {
-        CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &_wicFactory ) );
+        if ( SUCCEEDED ( CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &_wicFactory ) ) ) ) 
+        {
+           
+        }
     }
         
     bool WICRenderPath::InitializeRenderTarget ( const ci::ivec2 & size )
@@ -27,6 +30,7 @@ namespace AX::Video
 
             if ( _wicFactory )
             {
+                _owner._surface = Surface8u::create ( size.x, size.y, true );
                 return SUCCEEDED ( _wicFactory->CreateBitmap ( size.x, size.y, GUID_WICPixelFormat32bppBGRA, WICBitmapCacheOnDemand, _wicBitmap.GetAddressOf ( ) ) );
             }
             else
@@ -65,9 +69,9 @@ namespace AX::Video
                         if ( SUCCEEDED ( lockedData->GetDataPointer ( &bufferSize, &data ) ) )
                         {
                             Surface8u surface ( data, _size.x, _size.y, stride, SurfaceChannelOrder::BGRA );
-                            // @note(andrew): I believe constructing the Surface8u 
-                            // this way forces it to copy the data into its own buffer
-                            _owner._surface = Surface8u::create ( surface );
+                            assert ( _owner._surface->getSize ( ) == surface.getSize ( ) );
+
+                            _owner._surface->copyFrom ( surface, surface.getBounds ( ) );
                             return true;
                         }
                     }

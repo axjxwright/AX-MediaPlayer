@@ -23,12 +23,14 @@ public:
     void setup ( ) override;
     void update ( ) override;
     void draw ( ) override;
+    void fileDrop ( FileDropEvent event ) override;
 
 protected:
 
     AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
+    bool _hardwareAccelerated{ false };
     gl::TextureRef _texture;
 };
 
@@ -36,9 +38,25 @@ void SimplePlaybackApp::setup ( )
 {
     ui::Initialize ( );
 
-    uint32_t flags = AX::Video::MediaPlayer::HardwareAccelerated;
+    uint32_t flags = 0;
+    if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
+    
     _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), flags );
-     
+    _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
+    _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
+    _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
+    _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
+    _player->Play ( );
+}
+
+void SimplePlaybackApp::fileDrop ( FileDropEvent event )
+{
+    uint32_t flags = 0;
+    if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
+
+    _error = AX::Video::MediaPlayer::Error::NoError;
+
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), flags );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
@@ -50,13 +68,27 @@ void SimplePlaybackApp::update ( )
 {
 }
 
+struct ScopedWindow2
+{
+    ScopedWindow2 ( const char * title, uint32_t flags )
+    {
+        ui::Begin ( title, nullptr, flags );
+    }
+
+    ~ScopedWindow2 ( )
+    {
+        ui::End ( );
+    }
+};
+
 void SimplePlaybackApp::draw ( )
 {
     gl::clear ( Colorf::black ( ) );
 
     {
-        ui::ScopedWindow window{ "Settings" };
+        ScopedWindow2 window{ "Settings", ImGuiWindowFlags_AlwaysAutoResize };
 
+        ui::Checkbox ( "Use H/W Acceleration", &_hardwareAccelerated );
         if ( _error != AX::Video::MediaPlayer::Error::NoError )
         {
             ui::TextColored ( ImVec4 ( 0.8f, 0.1f, 0.1f, 1.0f ), "Error: %s", AX::Video::MediaPlayer::ErrorToString ( _error ).c_str ( ) );
