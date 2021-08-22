@@ -112,7 +112,7 @@ namespace AX::Video
     {
         UINT deviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
 
-#ifndef _NDEBUG
+#ifndef NDEBUG
         deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
@@ -155,7 +155,7 @@ namespace AX::Video
         
         // @leak(andrew): Debug layer is whinging about live objects but is this 
         // this because the ComPtr destructors haven't had a chance to fire yet?
-        #ifndef _NDEBUG
+        #ifndef NDEBUG
         if ( _device )
         {
             ComPtr<ID3D11Debug> debug{ nullptr };
