@@ -25,6 +25,24 @@ using namespace ci;
 
 namespace
 {
+    static std::atomic_int kNumMediaFoundationInstances = 0;
+
+    static void OnMediaPlayerCreated ( )
+    {
+        if ( kNumMediaFoundationInstances++ == 0 )
+        {
+            MFStartup ( MF_VERSION );
+        }
+    }
+
+    static void OnMediaPlayerDestroyed ( )
+    {
+        if ( --kNumMediaFoundationInstances == 0 )
+        {
+            MFShutdown ( );
+        }
+    }
+
     class MFCallbackBase : public IMFAsyncCallback
     {
     public:
@@ -244,7 +262,7 @@ namespace AX::Video
         , _source ( source )
         , _flags ( flags )
     {
-        MFStartup ( MF_VERSION );
+        OnMediaPlayerCreated ( );
 
         ComPtr<IMFMediaEngineClassFactory> factory;
         if ( SUCCEEDED ( CoCreateInstance ( CLSID_MFMediaEngineClassFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &factory ) ) ) )
@@ -608,12 +626,15 @@ namespace AX::Video
 
     MediaPlayer::Impl::~Impl ( )
     {
+        _renderPath = nullptr;
+        _hasNewFrame.store ( false );
+
         if ( _mediaEngine )
         {
             _mediaEngine->Shutdown ( );
             _mediaEngine = nullptr;
         }
 
-        MFShutdown ( );
+        OnMediaPlayerDestroyed ( );
     }
 }

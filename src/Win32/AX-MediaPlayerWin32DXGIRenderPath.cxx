@@ -50,10 +50,16 @@ namespace AX::Video
         bool                            _isValid{ false };
     };
 
+    // @note(andrew): Lazily initialize this but make sure
+    // it hangs around for the remainer of the application
+    // so that it outlives any of the players that depend on
+    // it being alive and valid
+
+    static std::unique_ptr<InteropContext> kInteropContext{ nullptr };
     InteropContext & InteropContext::Get ( )
     {
-        static InteropContext kInstance;
-        return kInstance;
+        if ( !kInteropContext ) kInteropContext.reset ( new InteropContext ( ) );
+        return *kInteropContext;
     }
 
     class DXGIRenderPath::SharedTexture
@@ -218,6 +224,7 @@ namespace AX::Video
         {
             if ( IsLocked() ) wglDXUnlockObjectsNV ( InteropContext::Get ( ).Handle ( ), 1, &_shareHandle );
             wglDXUnregisterObjectNV ( InteropContext::Get ( ).Handle ( ), _shareHandle );
+            _shareHandle = nullptr;
         }
     }
 

@@ -19,7 +19,6 @@ namespace ui = ImGui;
 class SimplePlaybackApp : public app::App
 {
 public:
-
     void setup ( ) override;
     void update ( ) override;
     void draw ( ) override;
@@ -30,7 +29,7 @@ protected:
     AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
-    bool _hardwareAccelerated{ false };
+    bool _hardwareAccelerated{ true };
     gl::TextureRef _texture;
 };
 
