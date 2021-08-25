@@ -319,6 +319,16 @@ namespace AX::Video
 
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
+        // @note(andrew): Some of the IMFMediaEngine shutdown process can cause
+        // events to be fired during this class' destructor, which causes problems if 
+        // the app itself is shutting down, since the app::App::get()->dispatchAsync
+        // uses an io_context that is no longer valid. There doesn't seem to be a way to 
+        // unregister the EventNotify callback so just detect that case and bail early
+        if ( app::App::get ( )->getQuitRequested ( ) )
+        {
+            return S_OK;
+        }
+
         // @note(andrew): Make sure all signals are emitted on the main thread
         app::App::get()->dispatchAsync ( [=]
         {
@@ -628,10 +638,14 @@ namespace AX::Video
     {
         _renderPath = nullptr;
         _hasNewFrame.store ( false );
-
+        
         if ( _mediaEngine )
         {
-            _mediaEngine->Shutdown ( );
+            RunSynchronousInMTAThread ( [&]
+            {
+                _mediaEngine->Shutdown ( );
+            } );
+
             _mediaEngine = nullptr;
         }
 

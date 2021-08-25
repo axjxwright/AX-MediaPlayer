@@ -192,7 +192,7 @@ namespace AX::Video
         desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         desc.SampleDesc.Count = 1;
         desc.SampleDesc.Quality = 0;
-        desc.BindFlags = D3D11_BIND_RENDER_TARGET; // | D3D11_BIND_SHADER_RESOURCE;
+        desc.BindFlags = D3D11_BIND_RENDER_TARGET;
         desc.Usage = D3D11_USAGE_DEFAULT;
 
         auto & context = InteropContext::Get ( );
