@@ -27,6 +27,7 @@ namespace AX::Video
     {
     public:
 
+        static void                     StaticInitialize ( );
         static InteropContext &         Get ( );
 
         ~InteropContext                 ( );
@@ -50,15 +51,23 @@ namespace AX::Video
         bool                            _isValid{ false };
     };
 
-    // @note(andrew): Lazily initialize this but make sure
-    // it hangs around for the remainer of the application
-    // so that it outlives any of the players that depend on
-    // it being alive and valid
+    // @leak(andrew): Lazily initialize and deliberately leak this 
+    // to make sureit hangs around for the remainder of the application
+    // It has to outlive any of the players that depend on it being alive and valid
+    // @todo(andrew): Find a less gross way to manage this lifetime
 
-    static std::unique_ptr<InteropContext> kInteropContext{ nullptr };
+    static InteropContext * kInteropContext{ nullptr };
+    void InteropContext::StaticInitialize ( )
+    {
+        if ( !kInteropContext )
+        {
+            kInteropContext = new InteropContext ( );
+        }
+    }
+
     InteropContext & InteropContext::Get ( )
     {
-        if ( !kInteropContext ) kInteropContext.reset ( new InteropContext ( ) );
+        assert ( kInteropContext );
         return *kInteropContext;
     }
 
@@ -234,6 +243,8 @@ namespace AX::Video
 
     bool DXGIRenderPath::Initialize ( IMFAttributes & attributes )
     {
+        InteropContext::StaticInitialize ( );
+
         auto & interop = InteropContext::Get ( );
         if ( !interop.IsValid ( ) ) return false;
 
@@ -285,6 +296,6 @@ namespace AX::Video
 
     DXGIRenderPath::~DXGIRenderPath ( )
     {
-        
+        _sharedTexture = nullptr;
     }
 }
