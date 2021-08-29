@@ -10,7 +10,13 @@
 #pragma comment(lib, "d3d11.lib")
 
 #include "AX-MediaPlayerWin32DXGIRenderPath.h"
-#include "glad/glad_wgl.h"
+#if (CINDER_VERSION < 903)
+    // Cinder 0.9.2 and younger used GLLoad
+    #include "glload/wgl_all.h"
+#else
+    // Cinder 0.9.3 and (presumably) going forward uses GLAD
+    #include "glad/glad_wgl.h"
+#endif
 
 #include "cinder/app/App.h"
 
