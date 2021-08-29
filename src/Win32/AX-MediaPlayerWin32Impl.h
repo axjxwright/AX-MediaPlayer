@@ -103,8 +103,8 @@ namespace AX::Video
 
         const   ci::ivec2 & GetSize ( ) const { return _size; }
 
-        void    SeekToSeconds ( float seconds );
-        void    SeekToPercentage ( float normalizedTime );
+        void    SeekToSeconds ( float seconds, bool approximate );
+        void    SeekToPercentage ( float normalizedTime, bool approximate );
 
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const { return _duration; }
@@ -131,6 +131,7 @@ namespace AX::Video
         ci::Surface8uRef            _surface{ nullptr };
         RenderPathRef               _renderPath;
         ComPtr<IMFMediaEngine>      _mediaEngine{ nullptr };
+        ComPtr<IMFMediaEngineEx>    _mediaEngineEx{ nullptr };
         mutable std::atomic_bool    _hasNewFrame{ false };
     };
 }

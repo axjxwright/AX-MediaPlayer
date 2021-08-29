@@ -125,14 +125,14 @@ namespace AX
             return _impl->GetSize ( );
         }
 
-        void MediaPlayer::SeekToSeconds ( float seconds )
+        void MediaPlayer::SeekToSeconds ( float seconds, bool approximate )
         {
-            return _impl->SeekToSeconds ( seconds );
+            return _impl->SeekToSeconds ( seconds, approximate );
         }
 
-        void MediaPlayer::SeekToPercentage ( float normalizedTime )
+        void MediaPlayer::SeekToPercentage ( float normalizedTime, bool approximate )
         {
-            return _impl->SeekToPercentage ( std::clamp ( normalizedTime, 0.0f, 1.0f ) );
+            return _impl->SeekToPercentage ( std::clamp ( normalizedTime, 0.0f, 1.0f ), approximate );
         }
 
         bool MediaPlayer::IsComplete ( ) const

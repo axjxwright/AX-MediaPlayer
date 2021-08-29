@@ -30,6 +30,7 @@ protected:
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
     bool _hardwareAccelerated{ true };
+    bool _approximateSeeking{ true };
     gl::TextureRef _texture;
 };
 
@@ -40,7 +41,8 @@ void SimplePlaybackApp::setup ( )
     uint32_t flags = 0;
     if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
     
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), flags );
+    //_player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), flags );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( "C:\\Dev\\Experiments\\8KVideo.mp4" ), flags );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
@@ -103,9 +105,10 @@ void SimplePlaybackApp::draw ( )
         ui::Text ( "%.2f FPS", getAverageFps ( ) );
         ui::Text ( "Hardware Accelerated: %s, HasAudio: %s, HasVideo : %s", _player->IsHardwareAccelerated() ? "true" : "false", _player->HasAudio ( ) ? "true" : "false", _player->HasVideo ( ) ? "true" : "false" );
 
+        ui::Checkbox ( "Approximate Seeking", &_approximateSeeking );
         if ( ui::SliderFloat ( "Seek", &percent, 0.0f, 1.0f ) )
         {
-            _player->SeekToPercentage ( percent );
+            _player->SeekToPercentage ( percent, _approximateSeeking );
         }
 
         float rate = _player->GetPlaybackRate ( );

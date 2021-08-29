@@ -310,6 +310,8 @@ namespace AX::Video
 
                 _mediaEngine->SetSource ( SafeBSTR{ actualPath } );
                 _mediaEngine->Load ( );
+
+                _mediaEngine->QueryInterface ( _mediaEngineEx.GetAddressOf ( ) );
             }
         }
     }
@@ -532,19 +534,23 @@ namespace AX::Video
         return static_cast<float> ( _mediaEngine->GetCurrentTime ( ) );
     }
 
-    void MediaPlayer::Impl::SeekToSeconds ( float seconds )
+    void MediaPlayer::Impl::SeekToSeconds ( float seconds, bool approximate )
     {
-        if ( _mediaEngine )
+        if ( _mediaEngineEx )
+        {
+            _mediaEngineEx->SetCurrentTimeEx ( seconds, approximate ? MF_MEDIA_ENGINE_SEEK_MODE_APPROXIMATE : MF_MEDIA_ENGINE_SEEK_MODE_NORMAL );
+        }
+        else if ( _mediaEngine )
         {
             _mediaEngine->SetCurrentTime ( static_cast<double> ( seconds ) );
         }
     }
 
-    void MediaPlayer::Impl::SeekToPercentage ( float normalizedTime )
+    void MediaPlayer::Impl::SeekToPercentage ( float normalizedTime, bool approximate )
     {
         if ( _duration > 0.0f )
         {
-            SeekToSeconds ( normalizedTime * _duration );
+            SeekToSeconds ( normalizedTime * _duration, approximate );
         }
     }
 
@@ -638,6 +644,11 @@ namespace AX::Video
     {
         _renderPath = nullptr;
         _hasNewFrame.store ( false );
+        
+        // @todo(andrew): Do I need to ::Shutdown through the Ex interface
+        // or since it's likely just an upcasted IMFMediaEngine will the
+        // original interface suffice?
+        _mediaEngineEx = nullptr;
         
         if ( _mediaEngine )
         {

@@ -91,8 +91,8 @@ namespace AX::Video
         bool    HasAudio ( ) const;
         bool    HasVideo ( ) const;
 
-        void    SeekToSeconds ( float seconds );
-        void    SeekToPercentage ( float normalizedTime );
+        void    SeekToSeconds ( float seconds, bool approximate = false );
+        void    SeekToPercentage ( float normalizedTime, bool approximate = false );
 
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const;
