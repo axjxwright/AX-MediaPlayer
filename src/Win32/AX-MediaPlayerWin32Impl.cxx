@@ -456,12 +456,17 @@ namespace AX::Video
         }
     }
 
-    void MediaPlayer::Impl::SetPlaybackRate ( float rate )
+    bool MediaPlayer::Impl::SetPlaybackRate ( float rate )
     {
         if ( _mediaEngine )
         {
-            _mediaEngine->SetPlaybackRate ( rate );
+            if ( IsPlaybackRateSupported ( rate ) )
+            {
+                return SUCCEEDED ( _mediaEngine->SetPlaybackRate ( static_cast<double> ( rate ) ) );
+            }
         }
+
+        return false;
     }
 
     float MediaPlayer::Impl::GetPlaybackRate ( ) const
@@ -472,6 +477,16 @@ namespace AX::Video
         }
 
         return 1.0f;
+    }
+
+    bool MediaPlayer::Impl::IsPlaybackRateSupported ( float rate ) const
+    {
+        if ( _mediaEngineEx )
+        {
+            return _mediaEngineEx->IsPlaybackRateSupported ( static_cast<double> ( rate ) );
+        }
+
+        return false;
     }
 
     void MediaPlayer::Impl::SetMuted ( bool mute )

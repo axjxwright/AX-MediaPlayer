@@ -80,14 +80,19 @@ namespace AX
             _impl->TogglePlayback ( );
         }
 
-        void MediaPlayer::SetPlaybackRate ( float rate )
+        bool MediaPlayer::SetPlaybackRate ( float rate )
         {
-            _impl->SetPlaybackRate ( rate );
+            return _impl->SetPlaybackRate ( rate );
         }
 
         float MediaPlayer::GetPlaybackRate ( ) const
         {
             return _impl->GetPlaybackRate ( );
+        }
+
+        bool MediaPlayer::IsPlaybackRateSupported ( float rate ) const
+        {
+            return _impl->IsPlaybackRateSupported ( rate );
         }
 
         void MediaPlayer::SetMuted ( bool mute )

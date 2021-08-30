@@ -67,8 +67,9 @@ namespace AX::Video
         void    Pause ( );
         void    TogglePlayback ( );
 
-        void    SetPlaybackRate ( float rate );
+        bool    SetPlaybackRate ( float rate );
         float   GetPlaybackRate ( ) const;
+        bool    IsPlaybackRateSupported ( float rate ) const;
 
         void    SetMuted ( bool mute );
         bool    IsMuted  ( ) const;
