@@ -344,11 +344,15 @@ namespace AX::Video
 
                 case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
                 {
-                    DWORD w, h;
-                    _mediaEngine->GetNativeVideoSize ( &w, &h );
-                    _size = ivec2 ( w, h );
                     _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-                    _renderPath->InitializeRenderTarget ( _size );
+
+                    DWORD w, h;
+                    if ( SUCCEEDED ( _mediaEngine->GetNativeVideoSize ( &w, &h ) ) )
+                    {
+                        _size = ivec2 ( w, h );
+                        _renderPath->InitializeRenderTarget ( _size );
+                    }
+
                     _hasMetadata = true;
                     _owner.OnReady.emit ( );
 
