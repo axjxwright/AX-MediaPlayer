@@ -9,6 +9,7 @@
 
 #include "AX-MediaPlayer.h"
 #include "cinder/app/App.h"
+#include "cinder/audio/Device.h"
 
 #include <cstdint>
 #include <iostream>
@@ -48,15 +49,21 @@ namespace AX
             }
         }
 
-        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, uint32_t flags )
+        MediaPlayer::Format & MediaPlayer::Format::AudioDevice ( const ci::audio::DeviceRef & device )
         {
-            return MediaPlayerRef ( new MediaPlayer ( source, flags ) );
+            if ( device ) _audioDeviceId = device->getKey ( );
+            return *this;
         }
 
-        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags )
-            : _flags ( flags )
+        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, const MediaPlayer::Format& fmt )
         {
-            _impl = std::make_unique<Impl> ( *this, source, flags );
+            return MediaPlayerRef ( new MediaPlayer ( source, fmt ) );
+        }
+
+        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, const Format& fmt )
+            : _format ( fmt )
+        {
+            _impl = std::make_unique<Impl> ( *this, source, _format );
             _updateConnection = app::App::get ( )->getSignalUpdate ( ).connect ( [=] { Update ( ); } );
         }
 

@@ -16,7 +16,7 @@ namespace AX::Video
     {
     public:
 
-        WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags );
+        WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source );
         
         bool ProcessFrame ( ) override;
         bool InitializeRenderTarget ( const ci::ivec2 & size ) override;

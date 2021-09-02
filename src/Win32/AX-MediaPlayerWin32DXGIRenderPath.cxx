@@ -243,8 +243,8 @@ namespace AX::Video
         }
     }
 
-    DXGIRenderPath::DXGIRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
-        : RenderPath ( owner, source, flags )
+    DXGIRenderPath::DXGIRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source )
+        : RenderPath ( owner, source )
     { }
 
     bool DXGIRenderPath::Initialize ( IMFAttributes & attributes )

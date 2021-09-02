@@ -46,10 +46,9 @@ namespace AX::Video
         {
         public:
 
-            RenderPath ( MediaPlayer::Impl& owner, const ci::DataSourceRef & source, uint32_t flags )
+            RenderPath ( MediaPlayer::Impl& owner, const ci::DataSourceRef & source )
                 : _owner ( owner )
                 , _source ( source )
-                , _flags ( flags )
             { }
 
             virtual ~RenderPath ( ) { };
@@ -62,7 +61,6 @@ namespace AX::Video
 
 
         protected:
-            uint32_t            _flags{ 0 };
             ci::DataSourceRef   _source;
             MediaPlayer::Impl & _owner;
             ci::ivec2           _size;
@@ -73,7 +71,7 @@ namespace AX::Video
         friend class DXGIRenderPath;
         friend class WICRenderPath;
 
-        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, uint32_t flags );
+        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, const Format& format );
 
         bool    Update ( );
 
@@ -128,7 +126,7 @@ namespace AX::Video
         MediaPlayer &               _owner;
         ci::DataSourceRef           _source;
         ci::ivec2                   _size;
-        uint32_t                    _flags{ 0 };
+        MediaPlayer::Format         _format;
         float                       _duration{ 0.0f };
         bool                        _hasMetadata{ false };
         ci::Surface8uRef            _surface{ nullptr };

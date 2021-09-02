@@ -9,11 +9,12 @@
 #include "cinder/app/RendererGl.h"
 #include "cinder/app/App.h"
 #include "cinder/gl/gl.h"
+#include "cinder/audio/audio.h"
 #include "AX-MediaPlayer.h"
 
 #if __has_include( "cinder/CinderImGui.h")
     #include "cinder/CinderImGui.h"
-    //#define HAS_DEBUG_UI
+    #define HAS_DEBUG_UI
     namespace ui = ImGui;
 #endif
 
@@ -34,7 +35,7 @@ protected:
     AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
-    bool _hardwareAccelerated{ true };
+    bool _hardwareAccelerated{ false };
     bool _approximateSeeking{ true };
     gl::TextureRef _texture;
 };
@@ -45,10 +46,9 @@ void SimplePlaybackApp::setup ( )
     ui::Initialize ( );
 #endif
 
-    uint32_t flags = 0;
-    if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
+    auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
     
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), flags );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
@@ -59,12 +59,10 @@ void SimplePlaybackApp::setup ( )
 
 void SimplePlaybackApp::fileDrop ( FileDropEvent event )
 {
-    uint32_t flags = 0;
-    if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
-
     _error = AX::Video::MediaPlayer::Error::NoError;
 
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), flags );
+    auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
@@ -174,12 +172,19 @@ void SimplePlaybackApp::draw ( )
         }
     }
 
-    // Only true if using DXGI path
-    if ( auto lease = _player->GetTexture ( ) )
+    if ( _player->IsHardwareAccelerated ( ) )
     {
-        // You can now use this texture until `lease` goes out
-        // of scope (it will Unlock() the texture when destructing )
-        gl::draw ( *lease, getWindowBounds ( ) );
+        // You can still use this method in software rendered mode
+        // but it will create a new texture every time it's called
+        // even if ::CheckNewFrame() was false. Use the above method 
+        // for optimal texture creation in software mode but if you 
+        // don't care, this block is functionally identical in both paths
+        if ( auto lease = _player->GetTexture ( ) )
+        {
+            // You can now use this texture until `lease` goes out
+            // of scope (it will Unlock() the texture when destructing )
+            gl::draw ( *lease, getWindowBounds ( ) );
+        }
     }
     else
     {

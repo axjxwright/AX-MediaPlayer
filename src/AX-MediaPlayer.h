@@ -16,9 +16,17 @@
 #include "cinder/DataSource.h"
 #include "cinder/Noncopyable.h"
 
+namespace cinder
+{
+    namespace audio
+    {
+        using DeviceFwdRef = std::shared_ptr<class Device>;
+    }
+}
+
 namespace AX::Video
 {
-    using MediaPlayerRef = std::unique_ptr<class MediaPlayer>;
+    using MediaPlayerRef = std::shared_ptr<class MediaPlayer>;
     class MediaPlayer : public ci::Noncopyable
     {
     public:
@@ -35,13 +43,6 @@ namespace AX::Video
             Encrypted           = 5,
         };
 
-        enum Flags
-        {
-            HardwareAccelerated = 0x01,
-            NoAudio             = 0x02,
-            AudioOnly           = 0x04
-        };
-
         class FrameLease
         {
         public:
@@ -55,13 +56,37 @@ namespace AX::Video
             virtual bool IsValid ( ) const { return false; };
         };
 
+        struct Format
+        {
+            Format & Audio ( bool enabled ) { _audioEnabled = enabled; return *this; }
+            Format & AudioOnly ( bool audioOnly ) { _audioOnly = audioOnly; return *this; }
+            Format & AudioDevice ( const ci::audio::DeviceFwdRef & device );
+            Format & HardwareAccelerated ( bool accelerated ) { _hardwareAccelerated = accelerated; return *this; }
+
+            bool    IsAudioEnabled ( ) const { return _audioEnabled;  }
+            bool    IsAudioOnly ( ) const { return _audioOnly; }
+            bool    IsHardwareAccelerated ( ) const { return _hardwareAccelerated; }
+            const std::string & AudioDeviceID ( ) const { return _audioDeviceId; }
+
+            Format ( ) { };
+
+        protected:
+
+            bool        _audioEnabled{ true };
+            bool        _audioOnly{ false };
+            bool        _hardwareAccelerated{ false };
+            std::string _audioDeviceId{ "" };
+        };
+
         using   FrameLeaseRef = std::unique_ptr<FrameLease>;
         
         using   EventSignal     = ci::signals::Signal<void ( )>;
         using   ErrorSignal     = ci::signals::Signal<void ( Error )>;
 
-        static  MediaPlayerRef Create ( const ci::DataSourceRef & source, uint32_t flags = 0 );
+        static  MediaPlayerRef Create ( const ci::DataSourceRef & source, const Format & fmt = Format ( ) );
+        
         static  const std::string & ErrorToString ( Error error );
+        inline const Format & GetFormat ( ) const { return _format; }
 
         void    Play ( );
         void    Pause ( );
@@ -82,7 +107,7 @@ namespace AX::Video
 
         const   ci::ivec2& GetSize ( ) const;
         inline  ci::Area   GetBounds ( ) const { return ci::Area ( ci::ivec2(0), GetSize() ); }
-        inline  bool       IsHardwareAccelerated ( ) const { return _flags & HardwareAccelerated; }
+        inline  bool       IsHardwareAccelerated ( ) const { return _format.IsHardwareAccelerated ( ); }
 
         bool    IsComplete ( ) const;
         bool    IsPlaying ( ) const;
@@ -121,10 +146,10 @@ namespace AX::Video
 
     protected:
 
-        MediaPlayer ( const ci::DataSourceRef & source, uint32_t flags );
+        MediaPlayer ( const ci::DataSourceRef & source, const Format & format );
         bool Update ( );
         
-        uint32_t                 _flags{ 0 };
+        Format                   _format;
         std::unique_ptr<Impl>    _impl;
         ci::signals::Connection  _updateConnection;
     };

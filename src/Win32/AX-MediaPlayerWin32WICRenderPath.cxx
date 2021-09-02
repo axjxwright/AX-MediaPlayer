@@ -32,8 +32,8 @@ namespace AX::Video
         gl::TextureRef _texture{ nullptr };
     };
 
-    WICRenderPath::WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags )
-        : RenderPath ( owner, source, flags )
+    WICRenderPath::WICRenderPath ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source )
+        : RenderPath ( owner, source )
     {
         if ( SUCCEEDED ( CoCreateInstance ( CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &_wicFactory ) ) ) ) 
         {

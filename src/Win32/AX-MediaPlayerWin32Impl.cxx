@@ -12,6 +12,8 @@
 
 #include "cinder/app/App.h"
 #include "cinder/DataSource.h"
+#include "cinder/Log.h"
+#include "cinder/audio/Device.h"
 #include <string>
 #include <unordered_map>
 #include <mutex>
@@ -257,10 +259,10 @@ namespace AX::Video
         app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
     }
 
-    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, uint32_t flags )
+    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, const Format& format )
         : _owner ( owner )
         , _source ( source )
-        , _flags ( flags )
+        , _format( format )
     {
         OnMediaPlayerCreated ( );
 
@@ -274,23 +276,35 @@ namespace AX::Video
 
             DWORD flags = MF_MEDIA_ENGINE_REAL_TIME_MODE;
 
-            if ( _flags & MediaPlayer::NoAudio )
+            if ( !_format.IsAudioEnabled() )
             {
                 flags |= MF_MEDIA_ENGINE_FORCEMUTE;
             }
 
-            if ( _flags & MediaPlayer::AudioOnly )
+            if ( _format.IsAudioOnly() )
             {
                 flags |= MF_MEDIA_ENGINE_AUDIOONLY;
             }
 
-            if ( _flags & MediaPlayer::HardwareAccelerated )
+            if ( _format.IsHardwareAccelerated() )
             {
-                _renderPath = std::make_unique<DXGIRenderPath> ( *this, source, _flags );
+                _renderPath = std::make_unique<DXGIRenderPath> ( *this, source );
             }
             else
             {
-                _renderPath = std::make_unique<WICRenderPath> ( *this, source, _flags );
+                _renderPath = std::make_unique<WICRenderPath> ( *this, source );
+            }
+
+            if ( !_format.AudioDeviceID ( ).empty ( ) )
+            {
+                auto deviceId = _format.AudioDeviceID ( );
+                static std::wstring wideDeviceId{ deviceId.begin ( ), deviceId.end ( ) };
+
+                if ( deviceId != audio::Device::getDefaultOutput ( )->getKey ( ) )
+                {
+                    CI_LOG_W ( "Non-default audio endpoints not currently supported" );
+                }
+                attributes->SetString ( MF_AUDIO_RENDERER_ATTRIBUTE_ENDPOINT_ID, wideDeviceId.c_str ( ) );
             }
 
             _renderPath->Initialize ( *attributes.Get() );

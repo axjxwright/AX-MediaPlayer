@@ -21,7 +21,7 @@ namespace AX::Video
         class SharedTexture;
         using SharedTextureRef = std::unique_ptr<SharedTexture>;
 
-        DXGIRenderPath              ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source, uint32_t flags );
+        DXGIRenderPath              ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source );
         ~DXGIRenderPath             ( );
         
         bool Initialize             ( IMFAttributes & attributes ) override;
