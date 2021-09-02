@@ -298,7 +298,7 @@ namespace AX::Video
             if ( !_format.AudioDeviceID ( ).empty ( ) )
             {
                 auto deviceId = _format.AudioDeviceID ( );
-                static std::wstring wideDeviceId{ deviceId.begin ( ), deviceId.end ( ) };
+                std::wstring wideDeviceId{ deviceId.begin ( ), deviceId.end ( ) };
 
                 if ( deviceId != audio::Device::getDefaultOutput ( )->getKey ( ) )
                 {
