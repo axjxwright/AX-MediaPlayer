@@ -9,12 +9,17 @@
 #include "cinder/app/RendererGl.h"
 #include "cinder/app/App.h"
 #include "cinder/gl/gl.h"
-#include "cinder/CinderImGui.h"
 #include "AX-MediaPlayer.h"
+
+#if __has_include( "cinder/CinderImGui.h")
+    #include "cinder/CinderImGui.h"
+    //#define HAS_DEBUG_UI
+    namespace ui = ImGui;
+#endif
 
 using namespace ci;
 using namespace ci::app;
-namespace ui = ImGui;
+
 
 class SimplePlaybackApp : public app::App
 {
@@ -36,7 +41,9 @@ protected:
 
 void SimplePlaybackApp::setup ( )
 {
+#ifdef HAS_DEBUG_UI
     ui::Initialize ( );
+#endif
 
     uint32_t flags = 0;
     if ( _hardwareAccelerated ) flags |= AX::Video::MediaPlayer::HardwareAccelerated;
@@ -45,6 +52,7 @@ void SimplePlaybackApp::setup ( )
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
+    _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
     _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
     _player->Play ( );
 }
@@ -60,6 +68,7 @@ void SimplePlaybackApp::fileDrop ( FileDropEvent event )
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
+    _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
     _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
     _player->Play ( );
 }
@@ -68,6 +77,7 @@ void SimplePlaybackApp::update ( )
 {
 }
 
+#ifdef HAS_DEBUG_UI
 struct ScopedWindow2
 {
     ScopedWindow2 ( const char * title, uint32_t flags )
@@ -80,11 +90,13 @@ struct ScopedWindow2
         ui::End ( );
     }
 };
+#endif
 
 void SimplePlaybackApp::draw ( )
 {
     gl::clear ( Colorf::black ( ) );
 
+#ifdef HAS_DEBUG_UI
     {
         ScopedWindow2 window{ "Settings", ImGuiWindowFlags_AlwaysAutoResize };
 
@@ -151,6 +163,7 @@ void SimplePlaybackApp::draw ( )
             }
         }
     }
+#endif
 
     if ( _player->CheckNewFrame ( ) )
     {

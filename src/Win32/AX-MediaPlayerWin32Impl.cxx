@@ -349,7 +349,9 @@ namespace AX::Video
                     _size = ivec2 ( w, h );
                     _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
                     _renderPath->InitializeRenderTarget ( _size );
-                
+                    _hasMetadata = true;
+                    _owner.OnReady.emit ( );
+
                     break;
                 }
 
@@ -604,6 +606,11 @@ namespace AX::Video
         }
 
         return false;
+    }
+
+    bool MediaPlayer::Impl::IsReady ( ) const
+    {
+        return _hasMetadata;
     }
 
     bool MediaPlayer::Impl::HasAudio ( ) const

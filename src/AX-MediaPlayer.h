@@ -18,7 +18,7 @@
 
 namespace AX::Video
 {
-    using MediaPlayerRef = std::shared_ptr<class MediaPlayer>;
+    using MediaPlayerRef = std::unique_ptr<class MediaPlayer>;
     class MediaPlayer : public ci::Noncopyable
     {
     public:
@@ -88,10 +88,11 @@ namespace AX::Video
         bool    IsPlaying ( ) const;
         bool    IsPaused ( ) const;
         bool    IsSeeking ( ) const;
+        bool    IsReady ( ) const;
             
         bool    HasAudio ( ) const;
         bool    HasVideo ( ) const;
-
+        
         void    SeekToSeconds ( float seconds, bool approximate = false );
         void    SeekToPercentage ( float normalizedTime, bool approximate = false );
 
@@ -103,6 +104,7 @@ namespace AX::Video
         const ci::Surface8uRef & GetSurface ( ) const;
         FrameLeaseRef GetTexture ( ) const;
 
+        EventSignal OnReady;
         EventSignal OnComplete;
         EventSignal OnPlay;
         EventSignal OnPause;

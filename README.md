@@ -12,7 +12,8 @@ but the audio related functions did _not_ like being called from the main thread
 way to perform a lambda on the MTA thread which seems to make it happy. `RunSynchronousInMTAThread ( ... )`. 
 
 There's no documentation, please just have a look at the provided sample to see the basic usage. It's all fairly straight forward
-video-related stuff. You should be able to just check this out into your cinder install's block's folder and off you go.
+video-related stuff. You should be able to just check this out into your cinder install's block's folder and off you go. The sample
+is built against cinder 0.9.3 to utilise the built-in imgui debug UI, but should also work with 0.9.2 without the UI
 
 This was just a one night project for fun so it comes with absolutely no warranty. Hopefully it still comes in handy for someone :)
 

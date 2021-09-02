@@ -160,6 +160,11 @@ namespace AX
             return _impl->IsSeeking ( );
         }
 
+        bool MediaPlayer::IsReady ( ) const
+        {
+            return _impl->IsReady ( );
+        }
+
         bool MediaPlayer::HasAudio ( ) const
         {
             return _impl->HasAudio ( );

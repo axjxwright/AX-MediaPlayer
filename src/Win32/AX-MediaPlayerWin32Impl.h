@@ -81,6 +81,7 @@ namespace AX::Video
         bool    IsPlaying ( ) const;
         bool    IsPaused ( ) const;
         bool    IsSeeking ( ) const;
+        bool    IsReady ( ) const;
 
         bool    HasAudio ( ) const;
         bool    HasVideo ( ) const;
@@ -129,6 +130,7 @@ namespace AX::Video
         ci::ivec2                   _size;
         uint32_t                    _flags{ 0 };
         float                       _duration{ 0.0f };
+        bool                        _hasMetadata{ false };
         ci::Surface8uRef            _surface{ nullptr };
         RenderPathRef               _renderPath;
         ComPtr<IMFMediaEngine>      _mediaEngine{ nullptr };
