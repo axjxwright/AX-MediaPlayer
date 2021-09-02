@@ -60,6 +60,12 @@ namespace AX
             return MediaPlayerRef ( new MediaPlayer ( source, fmt ) );
         }
 
+        MediaPlayerRef MediaPlayer::Create ( const ci::fs::path & filePath, const Format & fmt )
+        {
+            if ( !fs::exists ( filePath ) ) return nullptr;
+            return MediaPlayer::Create ( loadFile ( filePath ), fmt );
+        }
+
         MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, const Format& fmt )
             : _format ( fmt )
         {

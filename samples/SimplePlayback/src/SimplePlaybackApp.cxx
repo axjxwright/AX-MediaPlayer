@@ -48,7 +48,7 @@ void SimplePlaybackApp::setup ( )
 
     auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
     
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4" ), fmt );
+    _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4", fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );

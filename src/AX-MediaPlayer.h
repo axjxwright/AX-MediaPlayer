@@ -84,6 +84,7 @@ namespace AX::Video
         using   ErrorSignal     = ci::signals::Signal<void ( Error )>;
 
         static  MediaPlayerRef Create ( const ci::DataSourceRef & source, const Format & fmt = Format ( ) );
+        static  MediaPlayerRef Create ( const ci::fs::path & filePath, const Format & fmt = Format ( ) );
         
         static  const std::string & ErrorToString ( Error error );
         inline const Format & GetFormat ( ) const { return _format; }
