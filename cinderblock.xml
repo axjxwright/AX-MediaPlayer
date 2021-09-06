@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<cinder>
+<block
+	name="AX-MediaPlayer"
+	id="au.com.axinteractive.AX-MediaPlayer"
+	author="AX Interactive, Andrew Wright"
+	license="MIT"
+	summary="Hardware accelerated and CPU video and audio playback engine for Windows"
+	>
+	<sourcePattern>src/*.cxx</sourcePattern>
+	<sourcePattern>src/Win32/*.cxx</sourcePattern>
+	<headerPattern>src/*.h</headerPattern>
+	<headerPattern>src/Win32/*.h</headerPattern>
+	<includePath>src</includePath>
+	<includePath>src/Win32</includePath>
+</block>
+</cinder>
