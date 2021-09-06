@@ -46,7 +46,7 @@ void SimplePlaybackApp::setup ( )
     ui::Initialize ( );
 #endif
 
-    auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated ).AudioDevice ( audio::Device::getOutputDevices()[1] );
+    auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
     
     _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4", fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
