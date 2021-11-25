@@ -1,5 +1,5 @@
 //
-//  AX-MediaPlayerWin32WICRenderPath.h
+//  AX-MediaPlayerMSWWICRenderPath.h
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright (@axjxwright) on 17/08/21.
@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "AX-MediaPlayerWin32Impl.h"
+#include "AX-MediaPlayerMSWImpl.h"
 
 namespace AX::Video
 {

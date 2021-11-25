@@ -14,7 +14,7 @@
 
 #if __has_include( "cinder/CinderImGui.h")
     #include "cinder/CinderImGui.h"
-    #define HAS_DEBUG_UI
+     #define HAS_DEBUG_UI
     namespace ui = ImGui;
 #endif
 
@@ -35,7 +35,7 @@ protected:
     AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
-    bool _hardwareAccelerated{ false };
+    bool _hardwareAccelerated{ true };
     bool _approximateSeeking{ true };
     gl::TextureRef _texture;
 };

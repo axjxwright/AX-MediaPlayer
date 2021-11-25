@@ -1,14 +1,14 @@
 //
-//  AX-MediaPlayerWin32Impl.cxx
+//  AX-MediaPlayerMSWImpl.cxx
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright (@axjxwright) on 17/08/21.
 //  (c) 2021 AX Interactive (axinteractive.com.au)
 //
 
-#include "AX-MediaPlayerWin32Impl.h"
-#include "AX-MediaPlayerWin32WICRenderPath.h"
-#include "AX-MediaPlayerWin32DXGIRenderPath.h"
+#include "AX-MediaPlayerMSWImpl.h"
+#include "AX-MediaPlayerMSWWICRenderPath.h"
+#include "AX-MediaPlayerMSWDXGIRenderPath.h"
 
 #include "cinder/app/App.h"
 #include "cinder/DataSource.h"
@@ -321,7 +321,7 @@ namespace AX::Video
                 {
                     actualPath = _source->getFilePath ( ).wstring ( );
                 }
-
+                
                 _mediaEngine->SetSource ( SafeBSTR{ actualPath } );
                 _mediaEngine->Load ( );
 

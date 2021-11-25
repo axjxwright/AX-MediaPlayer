@@ -15,7 +15,7 @@
 #include <iostream>
 
 #ifdef WIN32
-    #include "Win32/AX-MediaPlayerWin32Impl.h"
+    #include "msw/AX-MediaPlayerMSWImpl.h"
 #else
     #error "Unsupported Platform"
 #endif

@@ -1,12 +1,12 @@
 //
-//  AX-MediaPlayerWin32WICRenderPath.cxx
+//  AX-MediaPlayerMSWWICRenderPath.cxx
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright on 17/08/21.
 //  (c) 2021 AX Interactive
 //
 
-#include "AX-MediaPlayerWin32WICRenderPath.h"
+#include "AX-MediaPlayerMSWWICRenderPath.h"
 
 using namespace ci;
 
@@ -69,7 +69,7 @@ namespace AX::Video
         {
             MFVideoNormalizedRect srcRect{ 0.0f, 0.0f, 1.0f, 1.0f };
             RECT dstRect{ 0, 0, _size.x, _size.y };
-            MFARGB black{ 0, 0, 0, 1 };
+            MFARGB black{ 0, 0, 0, 0 };
 
             if ( SUCCEEDED ( engine->TransferVideoFrame ( _wicBitmap.Get ( ), &srcRect, &dstRect, &black ) ) )
             {

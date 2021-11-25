@@ -1,5 +1,5 @@
 //
-//  AX-MediaPlayerWin32DXGIRenderPath.h
+//  AX-MediaPlayerMSWDXGIRenderPath.h
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright (@axjxwright) on 17/08/21.
@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "AX-MediaPlayerWin32Impl.h"
+#include "AX-MediaPlayerMSWImpl.h"
 #include "cinder/gl/gl.h"
 #include <d3d11.h>
 

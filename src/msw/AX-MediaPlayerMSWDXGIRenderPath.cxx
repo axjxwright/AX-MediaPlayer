@@ -1,5 +1,5 @@
 //
-//  AX-MediaPlayerWin32DXGIRenderPath.cxx
+//  AX-MediaPlayerMSWDXGIRenderPath.cxx
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright (@axjxwright) on 17/08/21.
@@ -9,7 +9,7 @@
 
 #pragma comment(lib, "d3d11.lib")
 
-#include "AX-MediaPlayerWin32DXGIRenderPath.h"
+#include "AX-MediaPlayerMSWDXGIRenderPath.h"
 #if (CINDER_VERSION < 903)
     // Cinder 0.9.2 and younger used GLLoad
     #include "glload/wgl_all.h"
@@ -281,7 +281,7 @@ namespace AX::Video
 
             MFVideoNormalizedRect srcRect{ 0.0f, 0.0f, 1.0f, 1.0f };
             RECT dstRect{ 0, 0, _size.x, _size.y };
-            MFARGB black{ 0, 0, 0, 1 };
+            MFARGB black{ 0, 0, 0, 0 };
 
             bool ok = SUCCEEDED ( engine->TransferVideoFrame ( _sharedTexture->DXTextureHandle(), &srcRect, &dstRect, &black ) );
             if ( ok )

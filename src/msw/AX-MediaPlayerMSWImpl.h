@@ -1,5 +1,5 @@
 //
-//  AX-MediaPlayerWin32Impl.h
+//  AX-MediaPlayerMSWImpl.h
 //  AX-MediaPlayer
 //
 //  Created by Andrew Wright (@axjxwright) on 17/08/21.
