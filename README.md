@@ -1,6 +1,9 @@
 # AX-MediaPlayer
 Media Playback Engine for Cinder
 
+*Update 11/12/2021*
+- Added a macOS backend that matches the API defined for the windows version, backed by cinder's native `qtime::MovieGl`/`qtime::MovieSurface` implementations. 
+
 This is effectively a wrapper around `IMFMediaEngine` (meaning it's currently windows 8+ only). `IMFMediaEngine` supports both a hardware accelerated and CPU implementation and AX-MediaPlayer provides a backend for each. Please refer to the SamplePlayback sample for usage as the method varies slightly due to the synchronisation / locking requirements of the hardware path.
 
 I've taken _reasonable_ care as it pertains to leaks but that is my first COM heavy library

@@ -13,11 +13,12 @@
 
 #include <cstdint>
 #include <iostream>
+#include <unordered_map>
 
 #ifdef WIN32
     #include "msw/AX-MediaPlayerMSWImpl.h"
 #else
-    #error "Unsupported Platform"
+    #include "osx/AX-MediaPlayerOSXImpl.h"
 #endif
 
 using namespace ci;

@@ -21,7 +21,6 @@
 using namespace ci;
 using namespace ci::app;
 
-
 class SimplePlaybackApp : public app::App
 {
 public:
@@ -48,12 +47,14 @@ void SimplePlaybackApp::setup ( )
 
     auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
     
-    _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "\\samples\\QuickTimeBasic\\assets\\bbb.mp4", fmt );
+    _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
     _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
     _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
     _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
+    _player->OnBufferingStart.connect ( [=] { std::cout << "OnBufferingStart\n"; } );
+    _player->OnBufferingEnd.connect ( [=] { std::cout << "OnBufferingEnd\n"; } );
     _player->Play ( );
 }
 
@@ -68,6 +69,8 @@ void SimplePlaybackApp::fileDrop ( FileDropEvent event )
     _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
     _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
     _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
+    _player->OnBufferingStart.connect ( [=] { std::cout << "OnBufferingStart\n"; } );
+    _player->OnBufferingEnd.connect ( [=] { std::cout << "OnBufferingEnd\n"; } );
     _player->Play ( );
 }
 
@@ -194,7 +197,9 @@ void SimplePlaybackApp::draw ( )
 
 void Init ( App::Settings * settings )
 {
+#ifdef CINDER_MSW
     settings->setConsoleWindowEnabled ( );
+#endif
 }
 
 CINDER_APP ( SimplePlaybackApp, RendererGl ( RendererGl::Options() ), Init );

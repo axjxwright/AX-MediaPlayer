@@ -5,13 +5,23 @@
 	id="au.com.axinteractive.AX-MediaPlayer"
 	author="AX Interactive, Andrew Wright"
 	license="MIT"
-	summary="Hardware accelerated and CPU video and audio playback engine for Windows"
+	summary="Hardware accelerated and CPU video and audio playback engine for Windows + macOS"
 	>
+	<platform os="macosx">
+		<sourcePattern>src/osx/*.mm</sourcePattern>
+		<headerPattern>src/osx/*.h</headerPattern>
+		<includePath>src/osx</includePath>
+	</platform>
+	
+	<platform os="msw">
+		<sourcePattern>src/msw/*.cxx</sourcePattern>
+		<headerPattern>src/msw/*.h</headerPattern>
+		<includePath>src/msw</includePath>
+	</platform>
+	
 	<sourcePattern>src/*.cxx</sourcePattern>
-	<sourcePattern>src/msw/*.cxx</sourcePattern>
 	<headerPattern>src/*.h</headerPattern>
-	<headerPattern>src/msw/*.h</headerPattern>
 	<includePath>src</includePath>
-	<includePath>src/msw</includePath>
+	
 </block>
 </cinder>
