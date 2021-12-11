@@ -122,7 +122,7 @@ namespace AX::Video
 
     bool MediaPlayer::Impl::SetPlaybackRate ( float rate )
     {
-        if ( _isPlaying )
+        if ( _player )
         {
             if ( IsPlaybackRateSupported ( rate ) )
             {
@@ -144,6 +144,8 @@ namespace AX::Video
 
     bool MediaPlayer::Impl::IsPlaybackRateSupported ( float rate ) const
     {
+        if ( !_player ) return false;
+
         if ( rate == 0.0f || rate == 1.0f ) return true;
         
         AVPlayer * player = _player->getPlayerHandle();
@@ -351,17 +353,20 @@ namespace AX::Video
 
     MediaPlayer::FrameLeaseRef MediaPlayer::Impl::GetTexture ( ) const
     {
-        if ( _format.IsHardwareAccelerated() )
+        if ( _player )
         {
-            _hasNewFrame.store ( false );
-            auto player = std::static_pointer_cast<qtime::MovieGl>( _player );
-            return std::make_unique<StaticFrameLease>( player->getTexture() );
-        }else
-        {
-            _hasNewFrame.store ( false );
-            auto player = std::static_pointer_cast<qtime::MovieSurface>( _player );
-            auto texture = gl::Texture::create ( *player->getSurface(), gl::Texture::Format ( ).loadTopDown ( ) );
-            return std::make_unique<StaticFrameLease>( texture );
+            if ( _format.IsHardwareAccelerated() )
+            {
+                _hasNewFrame.store ( false );
+                auto player = std::static_pointer_cast<qtime::MovieGl>( _player );
+                return std::make_unique<StaticFrameLease>( player->getTexture() );
+            }else
+            {
+                _hasNewFrame.store ( false );
+                auto player = std::static_pointer_cast<qtime::MovieSurface>( _player );
+                auto texture = gl::Texture::create ( *player->getSurface(), gl::Texture::Format ( ).loadTopDown ( ) );
+                return std::make_unique<StaticFrameLease>( texture );
+            }
         }
         
         return nullptr;
