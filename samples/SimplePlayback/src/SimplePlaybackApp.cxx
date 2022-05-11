@@ -18,6 +18,17 @@
     namespace ui = ImGui;
 #endif
 
+#undef HAS_DEBUG_UI
+
+#define FORCE_NVIDIA_CARD_IF_PRESENT
+
+#ifdef FORCE_NVIDIA_CARD_IF_PRESENT
+extern "C" 
+{
+    __declspec(dllexport) int NvOptimusEnablement = 0x00000001; // This forces Intel GPU / Nvidia card selection
+}
+#endif
+
 using namespace ci;
 using namespace ci::app;
 
@@ -46,6 +57,9 @@ void SimplePlaybackApp::setup ( )
 #endif
 
     auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
+
+    console() << gl::getString(GL_RENDERER) << std::endl;
+    console() << gl::getString(GL_VERSION) << std::endl;
     
     _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", fmt );
     _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );

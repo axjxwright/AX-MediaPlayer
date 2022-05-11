@@ -58,7 +58,7 @@ namespace AX::Video
     };
 
     // @leak(andrew): Lazily initialize and deliberately leak this 
-    // to make sureit hangs around for the remainder of the application
+    // to make sure it hangs around for the remainder of the application
     // It has to outlive any of the players that depend on it being alive and valid
     // @todo(andrew): Find a less gross way to manage this lifetime
 
@@ -236,10 +236,13 @@ namespace AX::Video
     DXGIRenderPath::SharedTexture::~SharedTexture ( )
     {
         if ( _shareHandle != nullptr )
-        {
-            if ( IsLocked() ) wglDXUnlockObjectsNV ( InteropContext::Get ( ).Handle ( ), 1, &_shareHandle );
-            wglDXUnregisterObjectNV ( InteropContext::Get ( ).Handle ( ), _shareHandle );
-            _shareHandle = nullptr;
+        { 
+            if ( wglGetCurrentContext() != nullptr ) // No GL Context, so we're likely in the process of shutting down
+            {
+                if ( IsLocked() ) wglDXUnlockObjectsNV ( InteropContext::Get().Handle(), 1, &_shareHandle );
+                wglDXUnregisterObjectNV ( InteropContext::Get().Handle(), _shareHandle );
+                _shareHandle = nullptr;
+            }
         }
     }
 
