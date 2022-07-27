@@ -83,8 +83,8 @@ namespace AX::Video
         using   EventSignal     = ci::signals::Signal<void ( )>;
         using   ErrorSignal     = ci::signals::Signal<void ( Error )>;
 
-        static  MediaPlayerRef Create ( const ci::DataSourceRef & source, const Format & fmt = Format ( ) );
-        static  MediaPlayerRef Create ( const ci::fs::path & filePath, const Format & fmt = Format ( ) );
+        static  MediaPlayerRef Create ( const ci::DataSourceRef & source, bool doDispatchEvents, const Format & fmt = Format ( ) );
+        static  MediaPlayerRef Create ( const ci::fs::path & filePath, bool doDispatchEvents, const Format & fmt = Format ( ) );
         
         static  const std::string & ErrorToString ( Error error );
         inline const Format & GetFormat ( ) const { return _format; }
@@ -105,6 +105,9 @@ namespace AX::Video
 
         void    SetLoop ( bool loop );
         bool    IsLooping ( ) const;
+
+        void    SetDoDispatchEvents ( bool state );
+        bool    IsDispatchingEvents ( ) const;
 
         const   ci::ivec2& GetSize ( ) const;
         inline  ci::Area   GetBounds ( ) const { return ci::Area ( ci::ivec2(0), GetSize() ); }
@@ -147,7 +150,7 @@ namespace AX::Video
 
     protected:
 
-        MediaPlayer ( const ci::DataSourceRef & source, const Format & format );
+        MediaPlayer ( const ci::DataSourceRef & source, bool doDispatchEvents, const Format & format );
         bool Update ( );
         
         Format                   _format;

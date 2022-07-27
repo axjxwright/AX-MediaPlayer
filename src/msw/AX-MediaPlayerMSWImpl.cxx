@@ -259,9 +259,10 @@ namespace AX::Video
         app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
     }
 
-    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, const Format& format )
+    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, bool doDispatchEvents, const Format& format )
         : _owner ( owner )
         , _source ( source )
+        , _doDispatchEvents( doDispatchEvents )
         , _format( format )
     {
         OnMediaPlayerCreated ( );
@@ -345,85 +346,121 @@ namespace AX::Video
             return S_OK;
         }
 
-        // @note(andrew): Make sure all signals are emitted on the main thread
-        app::App::get()->dispatchAsync ( [=]
+        if( _doDispatchEvents )
         {
-            switch ( event )
-            {
-                case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
+            // @note(andrew): Make sure all signals are emitted on the main thread
+            app::App::get()->dispatchAsync( [=]
                 {
-                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-                {
-                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-
-                    DWORD w, h;
-                    if ( SUCCEEDED ( _mediaEngine->GetNativeVideoSize ( &w, &h ) ) )
-                    {
-                        _size = ivec2 ( w, h );
-                        _renderPath->InitializeRenderTarget ( _size );
-                    }
-
-                    _hasMetadata = true;
-                    _owner.OnReady.emit ( );
-
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_PLAY:
-                {
-                    _owner.OnPlay.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_PAUSE:
-                {
-                    _owner.OnPause.emit ( );
-                    break;
-                }
-                case MF_MEDIA_ENGINE_EVENT_ENDED:
-                {
-                    _owner.OnComplete.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_SEEKING:
-                {
-                    _owner.OnSeekStart.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_SEEKED:
-                {
-                    _owner.OnSeekEnd.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED :
-                {
-                    _owner.OnBufferingStart.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
-                {
-                    _owner.OnBufferingEnd.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_ERROR:
-                {
-                    MF_MEDIA_ENGINE_ERR error = static_cast<MF_MEDIA_ENGINE_ERR> ( param1 );
-                    _owner.OnError.emit ( AXErrorFromMFError ( error ) );
-                    break;
-                }
-            }
-        } );
+                    ProcessEvent( event, param1, param2 );
+                } );
+        }
+        else
+        {
+            std::unique_lock<std::mutex> lk( _eventMutex );
+            _eventQueue.push( Event{ event, param1, param2 } );
+        }
 
         return S_OK;
+    }
+
+    void MediaPlayer::Impl::ProcessEvent( DWORD evt, DWORD_PTR param1, DWORD param2 )
+    {
+        switch( evt )
+        {
+        case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
+        {
+            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
+        {
+            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
+
+            DWORD w, h;
+            if( SUCCEEDED( _mediaEngine->GetNativeVideoSize( &w, &h ) ) )
+            {
+                _size = ivec2( w, h );
+                _renderPath->InitializeRenderTarget( _size );
+            }
+
+            _hasMetadata = true;
+            _owner.OnReady.emit();
+
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_PLAY:
+        {
+            _owner.OnPlay.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_PAUSE:
+        {
+            _owner.OnPause.emit();
+            break;
+        }
+        case MF_MEDIA_ENGINE_EVENT_ENDED:
+        {
+            _owner.OnComplete.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_SEEKING:
+        {
+            _owner.OnSeekStart.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_SEEKED:
+        {
+            _owner.OnSeekEnd.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED:
+        {
+            _owner.OnBufferingStart.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
+        {
+            _owner.OnBufferingEnd.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_ERROR:
+        {
+            MF_MEDIA_ENGINE_ERR error = static_cast< MF_MEDIA_ENGINE_ERR > ( param1 );
+            _owner.OnError.emit( AXErrorFromMFError( error ) );
+            break;
+        }
+        }
+    }
+
+    void MediaPlayer::Impl::UpdateEvents()
+    {
+        Event evt;
+        bool hasEvent = false;
+        do
+        {
+            hasEvent = false;
+            {
+                std::unique_lock<std::mutex> lk( _eventMutex );
+                if( !_eventQueue.empty() )
+                {
+                    evt = _eventQueue.front();
+                    _eventQueue.pop();
+                    hasEvent = true;
+                }
+            }
+            if( hasEvent )
+            {
+                ProcessEvent( evt.eventId, evt.param1, evt.param2 );
+            }
+        } while( hasEvent );
     }
 
     HRESULT STDMETHODCALLTYPE MediaPlayer::Impl::QueryInterface ( REFIID riid, LPVOID * ppvObj )
@@ -663,6 +700,11 @@ namespace AX::Video
                     _hasNewFrame.store ( true );
                 }
             }
+        }
+
+        if( !_doDispatchEvents )
+        {
+            UpdateEvents();
         }
 
         return false;

@@ -39,14 +39,18 @@ public:
     void update ( ) override;
     void draw ( ) override;
     void fileDrop ( FileDropEvent event ) override;
+    void keyDown( KeyEvent event ) override;
 
 protected:
+    void connectSignals();
+    void loadDefaultVideo();
 
     AX::Video::MediaPlayerRef     _player;
     AX::Video::MediaPlayer::Error _error{ AX::Video::MediaPlayer::Error::NoError };
 
     bool _hardwareAccelerated{ true };
     bool _approximateSeeking{ true };
+    bool _doDispatchEvents{ true };
     gl::TextureRef _texture;
 };
 
@@ -56,20 +60,32 @@ void SimplePlaybackApp::setup ( )
     ui::Initialize ( );
 #endif
 
-    auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
-
+  
     console() << gl::getString(GL_RENDERER) << std::endl;
     console() << gl::getString(GL_VERSION) << std::endl;
     
-    _player = AX::Video::MediaPlayer::Create ( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", fmt );
-    _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
-    _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
-    _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
-    _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
-    _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
-    _player->OnBufferingStart.connect ( [=] { std::cout << "OnBufferingStart\n"; } );
-    _player->OnBufferingEnd.connect ( [=] { std::cout << "OnBufferingEnd\n"; } );
-    _player->Play ( );
+    loadDefaultVideo();
+}
+
+void SimplePlaybackApp::loadDefaultVideo()
+{
+    auto fmt = AX::Video::MediaPlayer::Format().HardwareAccelerated( _hardwareAccelerated );
+    //_player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", _doDispatchEvents, fmt );
+    _player = AX::Video::MediaPlayer::Create( "C:/Users/chidi/Documents/code/work/data/matches/MatchID_0306_1/videos/CamA.mp4", _doDispatchEvents, fmt );
+    connectSignals();
+    _player->Play();
+}
+
+void SimplePlaybackApp::keyDown( KeyEvent event )
+{
+    if( event.getChar() == 'r' )
+    {
+        loadDefaultVideo();
+    }
+    else if( event.getChar() == 'd' )
+    {
+        _doDispatchEvents = !_doDispatchEvents;
+    }
 }
 
 void SimplePlaybackApp::fileDrop ( FileDropEvent event )
@@ -77,15 +93,20 @@ void SimplePlaybackApp::fileDrop ( FileDropEvent event )
     _error = AX::Video::MediaPlayer::Error::NoError;
 
     auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), fmt );
-    _player->OnSeekStart.connect ( [=] { std::cout << "OnSeekStart\n"; } );
-    _player->OnSeekEnd.connect ( [=] { std::cout << "OnSeekEnd\n"; } );
-    _player->OnComplete.connect ( [=] { std::cout << "OnComplete\n"; } );
-    _player->OnReady.connect ( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds ( ) << std::endl; } );
-    _player->OnError.connect ( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
-    _player->OnBufferingStart.connect ( [=] { std::cout << "OnBufferingStart\n"; } );
-    _player->OnBufferingEnd.connect ( [=] { std::cout << "OnBufferingEnd\n"; } );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), _doDispatchEvents, fmt );
+    connectSignals();
     _player->Play ( );
+}
+
+void SimplePlaybackApp::connectSignals()
+{
+    _player->OnSeekStart.connect( [=] { std::cout << "OnSeekStart\n"; } );
+    _player->OnSeekEnd.connect( [=] { std::cout << "OnSeekEnd\n"; } );
+    _player->OnComplete.connect( [=] { std::cout << "OnComplete\n"; } );
+    _player->OnReady.connect( [=] { std::cout << "OnReady: " << _player->GetDurationInSeconds() << std::endl; } );
+    _player->OnError.connect( [=] ( AX::Video::MediaPlayer::Error error ) { _error = error; } );
+    _player->OnBufferingStart.connect( [=] { std::cout << "OnBufferingStart\n"; } );
+    _player->OnBufferingEnd.connect( [=] { std::cout << "OnBufferingEnd\n"; } );
 }
 
 void SimplePlaybackApp::update ( )
