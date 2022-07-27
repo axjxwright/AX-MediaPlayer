@@ -70,8 +70,7 @@ void SimplePlaybackApp::setup ( )
 void SimplePlaybackApp::loadDefaultVideo()
 {
     auto fmt = AX::Video::MediaPlayer::Format().HardwareAccelerated( _hardwareAccelerated );
-    //_player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", _doDispatchEvents, fmt );
-    _player = AX::Video::MediaPlayer::Create( "C:/Users/chidi/Documents/code/work/data/matches/MatchID_0306_1/videos/CamA.mp4", _doDispatchEvents, fmt );
+    _player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", _doDispatchEvents, fmt );
     connectSignals();
     _player->Play();
 }
