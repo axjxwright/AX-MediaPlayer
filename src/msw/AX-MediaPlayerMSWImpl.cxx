@@ -344,84 +344,84 @@ namespace AX::Video
         return S_OK;
     }
 
-    void MediaPlayer::Impl::ProcessEvent( DWORD evt, DWORD_PTR param1, DWORD param2 )
+    void MediaPlayer::Impl::ProcessEvent ( DWORD evt, DWORD_PTR param1, DWORD param2 )
     {
-        switch( evt )
+        switch ( evt )
         {
-        case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
-        {
-            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
-            break;
-        }
-
-        case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-        {
-            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
-
-            DWORD w, h;
-            if( SUCCEEDED( _mediaEngine->GetNativeVideoSize( &w, &h ) ) )
+            case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
             {
-                _size = ivec2( w, h );
-                _renderPath->InitializeRenderTarget( _size );
+                _duration = static_cast< float > ( _mediaEngine->GetDuration() );
+                break;
             }
 
-            _hasMetadata = true;
-            _owner.OnReady.emit();
+            case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
+            {
+                _duration = static_cast< float > ( _mediaEngine->GetDuration() );
 
-            break;
-        }
+                DWORD w, h;
+                if( SUCCEEDED( _mediaEngine->GetNativeVideoSize( &w, &h ) ) )
+                {
+                    _size = ivec2( w, h );
+                    _renderPath->InitializeRenderTarget( _size );
+                }
 
-        case MF_MEDIA_ENGINE_EVENT_PLAY:
-        {
-            _owner.OnPlay.emit();
-            break;
-        }
+                _hasMetadata = true;
+                _owner.OnReady.emit();
 
-        case MF_MEDIA_ENGINE_EVENT_PAUSE:
-        {
-            _owner.OnPause.emit();
-            break;
-        }
-        case MF_MEDIA_ENGINE_EVENT_ENDED:
-        {
-            _owner.OnComplete.emit();
-            break;
-        }
+                break;
+            }
 
-        case MF_MEDIA_ENGINE_EVENT_SEEKING:
-        {
-            _owner.OnSeekStart.emit();
-            break;
-        }
+            case MF_MEDIA_ENGINE_EVENT_PLAY:
+            {
+                _owner.OnPlay.emit();
+                break;
+            }
 
-        case MF_MEDIA_ENGINE_EVENT_SEEKED:
-        {
-            _owner.OnSeekEnd.emit();
-            break;
-        }
+            case MF_MEDIA_ENGINE_EVENT_PAUSE:
+            {
+                _owner.OnPause.emit();
+                break;
+            }
+            case MF_MEDIA_ENGINE_EVENT_ENDED:
+            {
+                _owner.OnComplete.emit();
+                break;
+            }
 
-        case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED:
-        {
-            _owner.OnBufferingStart.emit();
-            break;
-        }
+            case MF_MEDIA_ENGINE_EVENT_SEEKING:
+            {
+                _owner.OnSeekStart.emit();
+                break;
+            }
 
-        case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
-        {
-            _owner.OnBufferingEnd.emit();
-            break;
-        }
+            case MF_MEDIA_ENGINE_EVENT_SEEKED:
+            {
+                _owner.OnSeekEnd.emit();
+                break;
+            }
 
-        case MF_MEDIA_ENGINE_EVENT_ERROR:
-        {
-            MF_MEDIA_ENGINE_ERR error = static_cast< MF_MEDIA_ENGINE_ERR > ( param1 );
-            _owner.OnError.emit( AXErrorFromMFError( error ) );
-            break;
-        }
+            case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED:
+            {
+                _owner.OnBufferingStart.emit();
+                break;
+            }
+
+            case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
+            {
+                _owner.OnBufferingEnd.emit();
+                break;
+            }
+
+            case MF_MEDIA_ENGINE_EVENT_ERROR:
+            {
+                MF_MEDIA_ENGINE_ERR error = static_cast< MF_MEDIA_ENGINE_ERR > ( param1 );
+                _owner.OnError.emit( AXErrorFromMFError( error ) );
+                break;
+            }
         }
     }
 
-    void MediaPlayer::Impl::UpdateEvents()
+    void MediaPlayer::Impl::UpdateEvents ( )
     {
         Event evt;
         bool hasEvent = false;
@@ -683,7 +683,7 @@ namespace AX::Video
             }
         }
 
-        UpdateEvents();
+        UpdateEvents ( );
         
         return false;
     }

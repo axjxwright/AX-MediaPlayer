@@ -364,8 +364,14 @@ namespace AX::Video
             {
                 _hasNewFrame.store ( false );
                 auto player = std::static_pointer_cast<qtime::MovieSurface>( _player );
-                auto texture = gl::Texture::create ( *player->getSurface(), gl::Texture::Format ( ).loadTopDown ( ) );
-                return std::make_unique<StaticFrameLease>( texture );
+                if ( player && player->getSurface() )
+                {
+                    auto texture = gl::Texture::create ( *player->getSurface(), gl::Texture::Format ( ).loadTopDown ( ) );
+                    return std::make_unique<StaticFrameLease>( texture );
+                }else
+                {
+                    return nullptr;
+                }
             }
         }
         
