@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <mutex>
+#include <queue>
+
 #ifdef WIN32
 
 #ifdef WINVER
@@ -118,10 +121,13 @@ namespace AX::Video
         ULONG STDMETHODCALLTYPE AddRef ( ) override;
         ULONG STDMETHODCALLTYPE Release ( ) override;
 
+        void UpdateEvents ( );
+
         ~Impl ( );
 
 
     protected:
+        void ProcessEvent ( DWORD evt, DWORD_PTR param1, DWORD param2 );
 
         MediaPlayer &               _owner;
         ci::DataSourceRef           _source;
@@ -134,5 +140,13 @@ namespace AX::Video
         ComPtr<IMFMediaEngine>      _mediaEngine{ nullptr };
         ComPtr<IMFMediaEngineEx>    _mediaEngineEx{ nullptr };
         mutable std::atomic_bool    _hasNewFrame{ false };
+        std::mutex                  _eventMutex;
+        struct Event
+        {
+            DWORD eventId{ 0 };
+            DWORD_PTR param1{ 0 }; 
+            DWORD param2{ 0 };
+        };
+        std::queue<Event>           _eventQueue;
     };
 }

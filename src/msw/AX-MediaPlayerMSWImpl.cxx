@@ -335,95 +335,113 @@ namespace AX::Video
 
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
-        // @note(andrew): Some of the IMFMediaEngine shutdown process can cause
-        // events to be fired during this class' destructor, which causes problems if 
-        // the app itself is shutting down, since the app::App::get()->dispatchAsync
-        // uses an io_context that is no longer valid. There doesn't seem to be a way to 
-        // unregister the EventNotify callback so just detect that case and bail early
-        if ( app::App::get ( )->getQuitRequested ( ) )
         {
-            return S_OK;
+            // @note(andrew): Make sure all signals are emitted on the main thread
+            std::unique_lock<std::mutex> lk( _eventMutex );
+            _eventQueue.push( Event{ event, param1, param2 } );
         }
 
-        // @note(andrew): Make sure all signals are emitted on the main thread
-        app::App::get()->dispatchAsync ( [=]
+        return S_OK;
+    }
+
+    void MediaPlayer::Impl::ProcessEvent( DWORD evt, DWORD_PTR param1, DWORD param2 )
+    {
+        switch( evt )
         {
-            switch ( event )
+        case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
+        {
+            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
+        {
+            _duration = static_cast< float > ( _mediaEngine->GetDuration() );
+
+            DWORD w, h;
+            if( SUCCEEDED( _mediaEngine->GetNativeVideoSize( &w, &h ) ) )
             {
-                case MF_MEDIA_ENGINE_EVENT_DURATIONCHANGE:
+                _size = ivec2( w, h );
+                _renderPath->InitializeRenderTarget( _size );
+            }
+
+            _hasMetadata = true;
+            _owner.OnReady.emit();
+
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_PLAY:
+        {
+            _owner.OnPlay.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_PAUSE:
+        {
+            _owner.OnPause.emit();
+            break;
+        }
+        case MF_MEDIA_ENGINE_EVENT_ENDED:
+        {
+            _owner.OnComplete.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_SEEKING:
+        {
+            _owner.OnSeekStart.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_SEEKED:
+        {
+            _owner.OnSeekEnd.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED:
+        {
+            _owner.OnBufferingStart.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
+        {
+            _owner.OnBufferingEnd.emit();
+            break;
+        }
+
+        case MF_MEDIA_ENGINE_EVENT_ERROR:
+        {
+            MF_MEDIA_ENGINE_ERR error = static_cast< MF_MEDIA_ENGINE_ERR > ( param1 );
+            _owner.OnError.emit( AXErrorFromMFError( error ) );
+            break;
+        }
+        }
+    }
+
+    void MediaPlayer::Impl::UpdateEvents()
+    {
+        Event evt;
+        bool hasEvent = false;
+        do
+        {
+            hasEvent = false;
+            {
+                std::unique_lock<std::mutex> lk( _eventMutex );
+                if( !_eventQueue.empty() )
                 {
-                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_LOADEDMETADATA:
-                {
-                    _duration = static_cast<float> ( _mediaEngine->GetDuration ( ) );
-
-                    DWORD w, h;
-                    if ( SUCCEEDED ( _mediaEngine->GetNativeVideoSize ( &w, &h ) ) )
-                    {
-                        _size = ivec2 ( w, h );
-                        _renderPath->InitializeRenderTarget ( _size );
-                    }
-
-                    _hasMetadata = true;
-                    _owner.OnReady.emit ( );
-
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_PLAY:
-                {
-                    _owner.OnPlay.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_PAUSE:
-                {
-                    _owner.OnPause.emit ( );
-                    break;
-                }
-                case MF_MEDIA_ENGINE_EVENT_ENDED:
-                {
-                    _owner.OnComplete.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_SEEKING:
-                {
-                    _owner.OnSeekStart.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_SEEKED:
-                {
-                    _owner.OnSeekEnd.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_BUFFERINGSTARTED :
-                {
-                    _owner.OnBufferingStart.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_BUFFERINGENDED:
-                {
-                    _owner.OnBufferingEnd.emit ( );
-                    break;
-                }
-
-                case MF_MEDIA_ENGINE_EVENT_ERROR:
-                {
-                    MF_MEDIA_ENGINE_ERR error = static_cast<MF_MEDIA_ENGINE_ERR> ( param1 );
-                    _owner.OnError.emit ( AXErrorFromMFError ( error ) );
-                    break;
+                    evt = _eventQueue.front();
+                    _eventQueue.pop();
+                    hasEvent = true;
                 }
             }
-        } );
-
-        return S_OK;
+            if( hasEvent )
+            {
+                ProcessEvent( evt.eventId, evt.param1, evt.param2 );
+            }
+        } while( hasEvent );
     }
 
     HRESULT STDMETHODCALLTYPE MediaPlayer::Impl::QueryInterface ( REFIID riid, LPVOID * ppvObj )
@@ -665,6 +683,8 @@ namespace AX::Video
             }
         }
 
+        UpdateEvents();
+        
         return false;
     }
 
