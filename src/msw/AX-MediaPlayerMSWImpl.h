@@ -74,7 +74,7 @@ namespace AX::Video
         friend class DXGIRenderPath;
         friend class WICRenderPath;
 
-        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, bool doDispatchEvents, const Format& format );
+        Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, const Format& format );
 
         bool    Update ( );
 
@@ -103,9 +103,6 @@ namespace AX::Video
 
         void    SetLoop ( bool loop );
         bool    IsLooping ( ) const;
-
-        void    SetDoDispatchEvents ( bool state ) { _doDispatchEvents = state; }
-        bool    IsDispatchingEvents ( ) const { return _doDispatchEvents; }
 
         const   ci::ivec2 & GetSize ( ) const { return _size; }
 
@@ -143,7 +140,6 @@ namespace AX::Video
         ComPtr<IMFMediaEngine>      _mediaEngine{ nullptr };
         ComPtr<IMFMediaEngineEx>    _mediaEngineEx{ nullptr };
         mutable std::atomic_bool    _hasNewFrame{ false };
-        bool                        _doDispatchEvents{ true };
         std::mutex                  _eventMutex;
         struct Event
         {

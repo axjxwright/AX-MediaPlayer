@@ -56,21 +56,21 @@ namespace AX
             return *this;
         }
 
-        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, bool doDispatchEvents, const MediaPlayer::Format& fmt )
+        MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, const MediaPlayer::Format& fmt )
         {
-            return MediaPlayerRef ( new MediaPlayer ( source, doDispatchEvents, fmt ) );
+            return MediaPlayerRef ( new MediaPlayer ( source, fmt ) );
         }
 
-        MediaPlayerRef MediaPlayer::Create ( const ci::fs::path & filePath, bool doDispatchEvents, const Format & fmt )
+        MediaPlayerRef MediaPlayer::Create ( const ci::fs::path & filePath, const Format & fmt )
         {
             if ( !fs::exists ( filePath ) ) return nullptr;
-            return MediaPlayer::Create ( loadFile ( filePath ), doDispatchEvents, fmt );
+            return MediaPlayer::Create ( loadFile ( filePath ), fmt );
         }
 
-        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, bool doDispatchEvents, const Format& fmt )
+        MediaPlayer::MediaPlayer ( const ci::DataSourceRef & source, const Format& fmt )
             : _format ( fmt )
         {
-            _impl = std::make_unique<Impl> ( *this, source, doDispatchEvents, _format );
+            _impl = std::make_unique<Impl> ( *this, source, _format );
             _updateConnection = app::App::get ( )->getSignalUpdate ( ).connect ( [=] { Update ( ); } );
         }
 
@@ -137,16 +137,6 @@ namespace AX
         bool MediaPlayer::IsLooping ( ) const
         {
             return _impl->IsLooping ( );
-        }
-
-        void MediaPlayer::SetDoDispatchEvents ( bool state ) 
-        { 
-            _impl->SetDoDispatchEvents ( state );
-        }
-
-        bool MediaPlayer::IsDispatchingEvents ( ) const 
-        { 
-            return _impl->IsDispatchingEvents ( );
         }
 
         const ivec2 & MediaPlayer::GetSize ( ) const

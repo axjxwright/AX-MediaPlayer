@@ -259,10 +259,9 @@ namespace AX::Video
         app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
     }
 
-    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, bool doDispatchEvents, const Format& format )
+    MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, const Format& format )
         : _owner ( owner )
         , _source ( source )
-        , _doDispatchEvents( doDispatchEvents )
         , _format( format )
     {
         OnMediaPlayerCreated ( );
@@ -336,26 +335,8 @@ namespace AX::Video
 
     HRESULT MediaPlayer::Impl::EventNotify ( DWORD event, DWORD_PTR param1, DWORD param2 )
     {
-        // @note(andrew): Some of the IMFMediaEngine shutdown process can cause
-        // events to be fired during this class' destructor, which causes problems if 
-        // the app itself is shutting down, since the app::App::get()->dispatchAsync
-        // uses an io_context that is no longer valid. There doesn't seem to be a way to 
-        // unregister the EventNotify callback so just detect that case and bail early
-        if ( app::App::get ( )->getQuitRequested ( ) )
-        {
-            return S_OK;
-        }
-
-        if( _doDispatchEvents )
         {
             // @note(andrew): Make sure all signals are emitted on the main thread
-            app::App::get()->dispatchAsync( [=]
-                {
-                    ProcessEvent( event, param1, param2 );
-                } );
-        }
-        else
-        {
             std::unique_lock<std::mutex> lk( _eventMutex );
             _eventQueue.push( Event{ event, param1, param2 } );
         }
@@ -702,11 +683,8 @@ namespace AX::Video
             }
         }
 
-        if( !_doDispatchEvents )
-        {
-            UpdateEvents();
-        }
-
+        UpdateEvents();
+        
         return false;
     }
 

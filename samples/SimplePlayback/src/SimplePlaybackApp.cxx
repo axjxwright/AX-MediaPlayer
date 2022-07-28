@@ -50,7 +50,6 @@ protected:
 
     bool _hardwareAccelerated{ true };
     bool _approximateSeeking{ true };
-    bool _doDispatchEvents{ true };
     gl::TextureRef _texture;
 };
 
@@ -70,7 +69,7 @@ void SimplePlaybackApp::setup ( )
 void SimplePlaybackApp::loadDefaultVideo()
 {
     auto fmt = AX::Video::MediaPlayer::Format().HardwareAccelerated( _hardwareAccelerated );
-    _player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", _doDispatchEvents, fmt );
+    _player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", fmt );
     connectSignals();
     _player->Play();
 }
@@ -81,10 +80,6 @@ void SimplePlaybackApp::keyDown( KeyEvent event )
     {
         loadDefaultVideo();
     }
-    else if( event.getChar() == 'd' )
-    {
-        _doDispatchEvents = !_doDispatchEvents;
-    }
 }
 
 void SimplePlaybackApp::fileDrop ( FileDropEvent event )
@@ -92,7 +87,7 @@ void SimplePlaybackApp::fileDrop ( FileDropEvent event )
     _error = AX::Video::MediaPlayer::Error::NoError;
 
     auto fmt = AX::Video::MediaPlayer::Format ( ).HardwareAccelerated ( _hardwareAccelerated );
-    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), _doDispatchEvents, fmt );
+    _player = AX::Video::MediaPlayer::Create ( loadFile ( event.getFile ( 0 ) ), fmt );
     connectSignals();
     _player->Play ( );
 }
