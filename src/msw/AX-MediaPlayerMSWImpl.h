@@ -112,6 +112,8 @@ namespace AX::Video
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const { return _duration; }
 
+        void    FrameStep ( int delta );
+
         bool    CheckNewFrame ( ) const { return _hasNewFrame.load ( ); }
         const   ci::Surface8uRef & GetSurface ( ) const;
         MediaPlayer::FrameLeaseRef GetTexture ( ) const;
@@ -141,6 +143,12 @@ namespace AX::Video
         ComPtr<IMFMediaEngineEx>    _mediaEngineEx{ nullptr };
         mutable std::atomic_bool    _hasNewFrame{ false };
         std::mutex                  _eventMutex;
+
+        // This is to try and determine if a loop has occurred
+        // since there's no loop event and it's indistinguishable 
+        // from a regular user loop
+        float                       _timeInSecondsAtStartOfSeek{ 0.0f }; 
+
         struct Event
         {
             DWORD eventId{ 0 };

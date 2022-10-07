@@ -70,6 +70,7 @@ void SimplePlaybackApp::loadDefaultVideo()
 {
     auto fmt = AX::Video::MediaPlayer::Format().HardwareAccelerated( _hardwareAccelerated );
     _player = AX::Video::MediaPlayer::Create( CINDER_PATH "/samples/QuickTimeBasic/assets/bbb.mp4", fmt );
+    _player->SetLoop ( true );
     connectSignals();
     _player->Play();
 }

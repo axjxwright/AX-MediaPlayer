@@ -391,12 +391,29 @@ namespace AX::Video
             case MF_MEDIA_ENGINE_EVENT_SEEKING:
             {
                 _owner.OnSeekStart.emit();
+                _timeInSecondsAtStartOfSeek = _owner.GetPositionInSeconds ( );
                 break;
             }
 
             case MF_MEDIA_ENGINE_EVENT_SEEKED:
             {
                 _owner.OnSeekEnd.emit();
+                if ( _owner.IsLooping ( ) )
+                {
+                    // @NOTE(andrew): Since the complete event is not fired on looping videos,
+                    // the best metric I was able to rely on was an EVENT_SEEKING with current time 0
+                    // followed by an EVENT_SEEKED, also at time 0. My crude hack is to try and keep
+                    // track of the current time when these are fired and if they're both zero 
+                    // (or close to it) then to assume a loop has taken place. Not perfect, but 
+                    // since the MFMediaEngine follows the HTML5 video spec, you can take it up
+                    // with the brains trust at the W3C ;)
+
+                    auto now = _owner.GetPositionInSeconds ( );
+                    if ( now < 0.05f && ( ( now - _timeInSecondsAtStartOfSeek ) < 0.01f ) )
+                    {
+                        _owner.OnComplete.emit ( );
+                    }
+                }
                 break;
             }
 
@@ -410,7 +427,7 @@ namespace AX::Video
             {
                 _owner.OnBufferingEnd.emit();
                 break;
-            }
+            }   
 
             case MF_MEDIA_ENGINE_EVENT_ERROR:
             {
@@ -604,6 +621,14 @@ namespace AX::Video
         if ( _duration > 0.0f )
         {
             SeekToSeconds ( normalizedTime * _duration, approximate );
+        }
+    }
+
+    void MediaPlayer::Impl::FrameStep ( int delta )
+    {
+        if ( _mediaEngineEx )
+        {
+            _mediaEngineEx->FrameStep ( delta > 0 ? true : false );
         }
     }
 

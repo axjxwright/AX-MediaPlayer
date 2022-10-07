@@ -122,6 +122,8 @@ namespace AX::Video
         void    SeekToSeconds ( float seconds, bool approximate = false );
         void    SeekToPercentage ( float normalizedTime, bool approximate = false );
 
+        void    FrameStep ( int delta );
+
         float   GetPositionInSeconds ( ) const;
         float   GetDurationInSeconds ( ) const;
         

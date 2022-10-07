@@ -154,6 +154,11 @@ namespace AX
             return _impl->SeekToPercentage ( std::clamp ( normalizedTime, 0.0f, 1.0f ), approximate );
         }
 
+        void MediaPlayer::FrameStep ( int delta )
+        {
+            return _impl->FrameStep ( delta );
+        }
+
         bool MediaPlayer::IsComplete ( ) const
         {
             return _impl->IsComplete ( );
