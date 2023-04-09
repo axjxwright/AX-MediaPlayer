@@ -251,6 +251,12 @@ namespace AX::Video
             SeekToSeconds ( normalizedTime * _duration, approximate );
         }
     }
+    
+    void MediaPlayer::Impl::FrameStep ( int delta )
+    {
+        int frame = _player->getCurrentTime() * _player->getFramerate();
+        _player->seekToFrame( frame + delta );
+    }
 
     bool MediaPlayer::Impl::IsComplete ( ) const
     {
