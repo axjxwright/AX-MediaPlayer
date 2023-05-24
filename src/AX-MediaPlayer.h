@@ -62,11 +62,13 @@ namespace AX::Video
             Format & AudioOnly ( bool audioOnly ) { _audioOnly = audioOnly; return *this; }
             Format & AudioDevice ( const ci::audio::DeviceFwdRef & device );
             Format & HardwareAccelerated ( bool accelerated ) { _hardwareAccelerated = accelerated; return *this; }
+            Format & AutoInitialize ( bool autoInit ) { _autoInit = autoInit; return *this; }
 
             bool    IsAudioEnabled ( ) const { return _audioEnabled;  }
             bool    IsAudioOnly ( ) const { return _audioOnly; }
             bool    IsHardwareAccelerated ( ) const { return _hardwareAccelerated; }
             const std::string & AudioDeviceID ( ) const { return _audioDeviceId; }
+            bool    IsAutoInitialized ( ) const { return _autoInit; };
 
             Format ( ) { };
 
@@ -76,6 +78,7 @@ namespace AX::Video
             bool        _audioOnly{ false };
             bool        _hardwareAccelerated{ false };
             std::string _audioDeviceId{ "" };
+            bool        _autoInit{ true };
         };
 
         using   FrameLeaseRef = std::unique_ptr<FrameLease>;
@@ -85,6 +88,13 @@ namespace AX::Video
 
         static  MediaPlayerRef Create ( const ci::DataSourceRef & source, const Format & fmt = Format ( ) );
         static  MediaPlayerRef Create ( const ci::fs::path & filePath, const Format & fmt = Format ( ) );
+
+        // @note(andrew): If !fmt.IsAutoInitialized(), these are required to be called manually.
+        // The use case is to have any heavy initialization / shutdown not be tied to the lifetime
+        // of a specific MediaPlayer instance to remove hitches when creating and destroying 
+        // video players often.
+        static  void StaticInitialize ( );
+        static  void StaticShutdown ( );
         
         static  const std::string & ErrorToString ( Error error );
         inline const Format & GetFormat ( ) const { return _format; }

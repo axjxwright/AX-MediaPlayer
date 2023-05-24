@@ -74,6 +74,9 @@ namespace AX::Video
         friend class DXGIRenderPath;
         friend class WICRenderPath;
 
+        static void StaticInitialize ( );
+        static void StaticShutdown ( );
+
         Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, const Format& format );
 
         bool    Update ( );

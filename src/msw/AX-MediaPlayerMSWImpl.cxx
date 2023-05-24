@@ -28,12 +28,13 @@ using namespace ci;
 namespace
 {
     static std::atomic_int kNumMediaFoundationInstances = 0;
+    static std::atomic_bool kIsMFInitialized = false;
 
     static void OnMediaPlayerCreated ( )
     {
         if ( kNumMediaFoundationInstances++ == 0 )
         {
-            MFStartup ( MF_VERSION );
+            kIsMFInitialized = SUCCEEDED ( MFStartup ( MF_VERSION ) );
         }
     }
 
@@ -42,6 +43,7 @@ namespace
         if ( --kNumMediaFoundationInstances == 0 )
         {
             MFShutdown ( );
+            kIsMFInitialized = false;
         }
     }
 
@@ -259,12 +261,31 @@ namespace AX::Video
         app::App::get ( )->dispatchSync ( [&] { callback ( ); } );
     }
 
+    void MediaPlayer::Impl::StaticInitialize ( )
+    {
+        if ( !kIsMFInitialized )
+        {
+            kIsMFInitialized = SUCCEEDED (MFStartup (MF_VERSION));
+        }
+    }
+
+    void MediaPlayer::Impl::StaticShutdown ( )
+    {
+        if ( kIsMFInitialized ) MFShutdown ( );
+        kIsMFInitialized = false;
+    }
+
     MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, const Format& format )
         : _owner ( owner )
         , _source ( source )
         , _format( format )
     {
-        OnMediaPlayerCreated ( );
+        if ( _format.IsAutoInitialized() ) OnMediaPlayerCreated ();
+        if ( !kIsMFInitialized )
+        {
+            throw std::runtime_error ("MediaFoundation not initialized! Set MediaPlayer::Format::AutoInitialize or call MediaPlayer::StaticInitialize() to manually manage lifetime!");
+            return;
+        }
 
         ComPtr<IMFMediaEngineClassFactory> factory;
         if ( SUCCEEDED ( CoCreateInstance ( CLSID_MFMediaEngineClassFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS ( &factory ) ) ) )
@@ -745,6 +766,6 @@ namespace AX::Video
             _mediaEngine = nullptr;
         }
 
-        OnMediaPlayerDestroyed ( );
+        if ( _format.IsAutoInitialized() ) OnMediaPlayerDestroyed ( );
     }
 }

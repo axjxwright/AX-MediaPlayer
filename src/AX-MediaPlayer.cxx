@@ -56,6 +56,16 @@ namespace AX
             return *this;
         }
 
+        void MediaPlayer::StaticInitialize ( )
+        {
+            MediaPlayer::Impl::StaticInitialize ( );
+        }
+
+        void MediaPlayer::StaticShutdown ( )
+        {
+            MediaPlayer::Impl::StaticShutdown ( );
+        }
+
         MediaPlayerRef MediaPlayer::Create ( const ci::DataSourceRef & source, const MediaPlayer::Format& fmt )
         {
             return MediaPlayerRef ( new MediaPlayer ( source, fmt ) );
