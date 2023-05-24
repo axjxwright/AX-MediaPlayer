@@ -20,7 +20,9 @@
 
 #undef HAS_DEBUG_UI
 
-#define FORCE_NVIDIA_CARD_IF_PRESENT
+#ifdef CINDER_MSW
+    #define FORCE_NVIDIA_CARD_IF_PRESENT
+#endif
 
 #ifdef FORCE_NVIDIA_CARD_IF_PRESENT
 extern "C" 

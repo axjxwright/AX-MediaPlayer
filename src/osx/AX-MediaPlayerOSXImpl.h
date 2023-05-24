@@ -27,6 +27,9 @@ namespace AX::Video
     {
     public:
         
+        static void StaticInitialize ( );
+        static void StaticShutdown ( );
+        
         Impl    ( MediaPlayer & owner, const ci::DataSourceRef & source, const Format& format );
 
         bool    Update ( );

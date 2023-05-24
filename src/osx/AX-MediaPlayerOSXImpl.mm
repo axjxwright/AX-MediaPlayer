@@ -30,6 +30,9 @@ namespace
 
 namespace AX::Video
 {
+    void MediaPlayer::Impl::StaticInitialize ( ) { }
+    void MediaPlayer::Impl::StaticShutdown ( ) { }
+    
     MediaPlayer::Impl::Impl ( MediaPlayer & owner, const DataSourceRef & source, const Format& format )
         : _owner ( owner )
         , _source ( source )
