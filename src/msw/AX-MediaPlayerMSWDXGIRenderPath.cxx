@@ -77,6 +77,14 @@ namespace AX::Video
         return *kInteropContext;
     }
 
+    void DXGIRenderPath::SharedTextureDeleter::operator ( ) ( SharedTexture* ptr ) const
+    {
+        std::default_delete<SharedTexture> deleter;
+        deleter ( ptr );
+    }
+
+    static DXGIRenderPath::SharedTextureDeleter kSharedTextureDeleter;
+
     class DXGIRenderPath::SharedTexture
     {
     public:
@@ -158,7 +166,7 @@ namespace AX::Video
 
     SharedTextureRef InteropContext::CreateSharedTexture ( const ivec2 & size )
     {
-        auto texture = std::make_unique<SharedTexture> ( size );
+        auto texture = SharedTextureRef ( new SharedTexture ( size ), kSharedTextureDeleter );
         if ( texture->IsValid ( ) ) return std::move ( texture );
 
         return nullptr;

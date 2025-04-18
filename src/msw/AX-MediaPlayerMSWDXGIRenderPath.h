@@ -18,8 +18,9 @@ namespace AX::Video
     {
     public:
 
-        class SharedTexture;
-        using SharedTextureRef = std::unique_ptr<SharedTexture>;
+        class  SharedTexture;
+        struct SharedTextureDeleter { void operator() ( SharedTexture* ) const; };
+        using  SharedTextureRef     = std::unique_ptr<SharedTexture, SharedTextureDeleter>;
 
         DXGIRenderPath              ( MediaPlayer::Impl & owner, const ci::DataSourceRef & source );
         ~DXGIRenderPath             ( );
