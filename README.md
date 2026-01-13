@@ -1,6 +1,9 @@
 # AX-MediaPlayer
 Media Playback Engine for Cinder
 
+*Update 13/11/2026*
+- This code has been merged into the core of Cinder and is now the backend for `ci::qtime::MovieGl` on windows, so using this as an external CinderBlock is no longer necessary.
+
 *Update 11/12/2021*
 - Added a macOS backend that matches the API defined for the windows version, backed by cinder's native `qtime::MovieGl`/`qtime::MovieSurface` implementations. 
 
